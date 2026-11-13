@@ -43,7 +43,8 @@ if [[ ! -x "$NODE_DIR/bin/node" ]]; then
   mkdir -p "$FERRAMENTAS"
   TAR="$FERRAMENTAS/node-$NODE_VER-linux-x64.tar.xz"
   echo "== baixando Node $NODE_VER para $FERRAMENTAS"
-  curl -fL --retry 3 -o "$TAR" "https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz"
+  URL="https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz"
+  if command -v curl >/dev/null; then curl -fL --retry 3 -o "$TAR" "$URL"; else wget -O "$TAR" "$URL"; fi
   echo "$NODE_SHA256  $TAR" | sha256sum -c - || { rm -f "$TAR"; echo "sha256 do Node não confere" >&2; exit 1; }
   tar -xJf "$TAR" -C "$FERRAMENTAS"
   rm -f "$TAR"
