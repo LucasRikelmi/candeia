@@ -1,4 +1,4 @@
-// Portado do geo_core.js V2.2 do NEXO, sem mudança de comportamento.
+// Portado do geo_core.js V2.2 do NEXO; mudanças do Candeia marcadas com "Candeia".
 import { normalizeBase, normNum, ABREV, normalizarPrefixoRodovia, TIPOS_VIA, ehCodigoRodovia, RUIDO_COMPLEMENTO, RE_COMPL_GLUED, _RE_COM_CRUZAMENTO, extensoParaNumeral } from "./normalizar.js";
 
 // ----------------------------------------------------------------------
@@ -185,5 +185,53 @@ export function extrairEntidades(enderecoCru) {
     }
   }
 
-  return { tipo, via, viaCruzamento, quadra, lote, numero, km, viaSemNumero, numeroSemVirgula };
+  // Candeia — via "estruturada" (DF, condomínios, conjuntos habitacionais): o CNEFE grava a
+  // quadra/conjunto/bloco no próprio nome do logradouro ("QNN 25 CONJUNTO B", "SQS 308 BLOCO C",
+  // "QUADRA 37"), que a extração acima desmonta (quadra vira campo, bloco vira ruído). Aqui se
+  // propõe a via com essas peças preservadas; geocodificar() só a usa se ela casar exato.
+  const { via: viaEstruturada, lote: loteCasa } = _viaEstruturada(base);
+  if (lote == null && loteCasa != null) lote = loteCasa;
+
+  return { tipo, via, viaCruzamento, quadra, lote, numero, km, viaSemNumero, numeroSemVirgula,
+    viaEstruturada: viaEstruturada && viaEstruturada !== via ? viaEstruturada : null };
+}
+
+const _ABREV_ESTRUTURA = [
+  [/\b(?:conj|cj)\b/g, "conjunto"],
+  [/\b(?:bl|blc)\b/g, "bloco"],
+  [/\b(?:qd|qda)\b/g, "quadra"],
+  [/\b(?:chac|ch)\b/g, "chacara"],
+  [/\bae\b/g, "area especial"],
+  [/\bcond\b/g, "condominio"],
+];
+// Complementos que não fazem parte do logradouro: unidade dentro do lote ou do prédio.
+const _RE_UNIDADE = /\b(?:ap|apto|apartamento|sala|sl|loja|lj|andar|cobertura|kitnet|box)\s*[0-9]+[a-z]?\b/g;
+// Tipos que fazem parte da chave estruturada ("quadra 37", "conjunto 5"); os outros saem do início.
+const _TIPO_ESTRUTURA = new Set(["conjunto", "quadra", "chacara", "setor", "area", "modulo"]);
+// Só propõe a via estruturada quando ela tem peça de estrutura seguida de identificador.
+const _RE_ESTRUTURA = /\b(?:quadra|conjunto|bloco|chacara|area especial|q[a-z]{1,3})\s+[0-9a-z]+\b/;
+
+export function _viaEstruturada(base) {
+  let b = base;
+  for (const [re, rep] of _ABREV_ESTRUTURA) b = b.replace(re, rep);
+  // "casa N" no DF e em conjuntos é o lote; só vira lote quando o endereço não trouxe um.
+  let lote = null;
+  const mCasa = b.match(/\b(?:casa|cs)\s*0*([0-9]+[a-z]?)\b/);
+  if (mCasa) lote = normNum(mCasa[1]);
+  b = b
+    .replace(/\b(?:casa|cs)\s*[0-9]+[a-z]?\b/g, " ")
+    .replace(_RE_UNIDADE, " ")
+    .replace(_RE_LOTE_CLEAN, " ")
+    .replace(_RE_KM_CLEAN, " ")
+    .replace(/\bs\s*\/?\s*n\b/g, " ")
+    .replace(/\bsem numero\b/g, " ");
+  _RE_LOTE_CLEAN.lastIndex = 0;
+  _RE_KM_CLEAN.lastIndex = 0;
+  let tokens = b.split(/\s+/).filter(Boolean);
+  // "EDF" (tipo dos logradouros do DF no CNEFE) e tipos genéricos no início não entram na chave.
+  while (tokens.length > 1 && (tokens[0] === "edf" || (TIPOS_VIA.has(tokens[0]) && !_TIPO_ESTRUTURA.has(tokens[0])))) {
+    tokens = tokens.slice(1);
+  }
+  const v = extensoParaNumeral(tokens.join(" ").trim());
+  return { via: _RE_ESTRUTURA.test(v) ? v : null, lote };
 }

@@ -173,6 +173,22 @@ Validação fora da amostra (ajuste em metade dos municípios, medida na outra, 
 
 Limites: o gabarito é o próprio CNEFE e as variantes têm peso igual. A tabela mede consistência do motor com a base, não acerto em campo; validação com pontos conferidos continua pendente. A tabela precisa ser regerada sempre que uma regra de cor mudar.
 
+### Rodada 5: endereços do DF (PR #5)
+
+No CNEFE do DF a quadra, o conjunto e o bloco fazem parte do nome do logradouro (tipo `EDF`: "QNN 25 CONJUNTO B", "SQS 308 BLOCO C", "QUADRA 37"; 34 mil chaves em Brasília) e o lote fica no complemento (69% dos pontos; quadra em 0,9%). O motor desmontava isso: "bloco" saía como ruído, "quadra 37" virava campo de quadra, e "EDF" ficava no nome. 89% do DF saía laranja.
+
+- `extrairEntidades` devolve `viaEstruturada`: a via com quadra, conjunto, bloco, chácara e área especial preservados, abreviações expandidas (cj/conj, bl, qd, ch/chac, ae, cond), unidade removida (ap, sala, loja) e "casa N" como lote. O motor só a usa quando a via extraída não é chave do índice e a estruturada é.
+- "EDF" entrou em `TIPOS_VIA`.
+- Lote sem quadra identifica o imóvel (`metodo: "lote"`) quando o candidato não tem quadra; lote repetido longe na via é rebaixado pelo raio do verde.
+
+| | antes | agora | NEXO |
+|---|---|---|---|
+| DF ≤100 m (A limpa, 150 endereços) | 74,7% | 84,0% | 35,3% |
+| DF >1 km | 10,7% | 4,7% | |
+| verde ≤100 m (todas as UFs) | 99,7% | 99,7% | |
+
+GO, RJ e TO também sobem (0,7 a 2,4 pontos) pelo lote sem quadra. A amostra do DF é um município com 150 endereços, e as consultas do benchmark vêm do próprio nome do CNEFE; as abreviações reais (cj, bl, cs) só estão cobertas por testes unitários. A tabela de calibração foi regerada.
+
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.

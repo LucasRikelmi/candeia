@@ -100,3 +100,24 @@ test("abreviações de tipo e título no início do endereço", () => {
   assert.equal(extrairEntidades("Rua R 5, 10").via, "r 5");      // "R" no meio não vira "rua"
   assert.equal(extrairEntidades("AL 101, km 5").tipo, "al");      // rodovia AL-101 não vira alameda
 });
+
+// Candeia (PR #5) — via estruturada (DF, conjuntos)
+test("via estruturada: DF com conjunto, bloco e casa", () => {
+  const casos = [
+    ["QNN 25 CJ B CASA 47", "qnn 25 conjunto b", "47"],
+    ["SQS 308 BL C AP 101", "sqs 308 bloco c", null],
+    ["EDF QUADRA 37, Lt 03", "quadra 37", "3"],
+    ["SHIS QI 15 CONJ 2 CS 10", "shis qi 15 conjunto 2", "10"],
+  ];
+  for (const [end, via, lote] of casos) {
+    const e = extrairEntidades(end);
+    assert.equal(e.viaEstruturada, via, end);
+    assert.equal(e.lote, lote, end);
+  }
+});
+
+test("via estruturada não aparece em endereço comum", () => {
+  for (const end of ["Rua das Flores, 120", "Av. Brasil 340", "Rodovia BR-153 km 5", "Rua X, 10, casa 2"]) {
+    assert.equal(extrairEntidades(end).viaEstruturada, null, end);
+  }
+});

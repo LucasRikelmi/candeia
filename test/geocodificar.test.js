@@ -157,3 +157,25 @@ test("verde devolve raio 0", () => {
   assert.equal(r.status, "verde");
   assert.equal(r.raio, 0);
 });
+
+// Candeia (PR #5) — DF: a quadra/conjunto/bloco está no nome do logradouro.
+test("DF: conjunto abreviado + casa acha o lote como verde", () => {
+  const g = cidade({
+    "qnn 25 conjunto b": [ponto("edf", null, -15.8010, -48.12), ponto("edf", null, -15.8020, -48.12), ponto("edf", null, -15.8030, -48.12)]
+      .map((p, i) => ({ ...p, l: String(45 + i) })),
+    "qnn 25 conjunto a": [{ ...ponto("edf", null, -15.81, -48.13), l: "47" }],
+  });
+  const r = g("QNN 25 CJ B CASA 47");
+  assert.equal(r.viaKey, "qnn 25 conjunto b");
+  assert.equal(r.status, "verde", r.motivo);
+  assert.equal(r.metodo, "lote");
+  assert.equal(r.coord.lat, -15.8030);
+});
+
+test("DF: bloco da superquadra é preservado", () => {
+  const g = cidade({
+    "sqs 308": [ponto("edf", null, -15.82, -47.91)],
+    "sqs 308 bloco c": [ponto("edf", null, -15.8205, -47.9105), ponto("edf", null, -15.8206, -47.9106), ponto("edf", null, -15.8207, -47.9107)],
+  });
+  assert.equal(g("SQS 308 BL C AP 101").viaKey, "sqs 308 bloco c");
+});
