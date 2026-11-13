@@ -1,0 +1,6 @@
+node_modules/
+# Dados nunca entram no repositório: são gerados pelo pipeline.
+dados/
+*.zip
+*.csv
+*.parquet
