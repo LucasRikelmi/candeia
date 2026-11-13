@@ -21,9 +21,9 @@ import urllib.request
 AMOSTRA = ["3550308", "5300108", "5208707", "1400100", "4314902"]  # SP, DF, Goiânia, Boa Vista, Porto Alegre
 
 
-def baixar(url: str, origem: str | None) -> tuple[int, dict, bytes]:
+def baixar(url: str, origem: str | None, aceita: str = "identity") -> tuple[int, dict, bytes]:
     req = urllib.request.Request(url, headers={"Origin": origem} if origem else {})
-    req.add_header("Accept-Encoding", "identity")
+    req.add_header("Accept-Encoding", aceita)
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return r.status, {k.lower(): v for k, v in r.headers.items()}, r.read()
@@ -57,7 +57,8 @@ def main() -> int:
             caminho = f"{m['uf']}/{cod}.json.gz" if m["tipo"] == "unico" else f"{m['uf']}/{cod}/{arq['nome']}"
             if not a.todos and m["tipo"] == "fatiado" and arq["nome"] not in ("index.json.gz", "f000.json.gz"):
                 continue
-            st, h, corpo = baixar(base + caminho, a.origem)
+            # Accept-Encoding de navegador: se o servidor ou a CDN recomprimir o .gz, aparece aqui.
+            st, h, corpo = baixar(base + caminho, a.origem, "gzip, deflate, br")
             n += 1
             if st != 200:
                 erros.append(f"{caminho}: HTTP {st}")
