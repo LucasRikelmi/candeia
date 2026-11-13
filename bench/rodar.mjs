@@ -202,7 +202,7 @@ for (const [cod, linhas] of Object.entries(porMun)) {
           const c = out.coord;
           const dist = c && Number.isFinite(c.lat) ? haversine(lat, lon, c.lat, c.lon) : null;
           resultados[nome].push({ id: r.id, uf: r.uf, cod, porte: r.porte, com_numero: temNumero(r), cenario,
-            variante, consulta: q.end, status: out.status, raio: out.raio ?? null, dist: dist == null ? null : Math.round(dist * 10) / 10 });
+            variante, consulta: q.end, status: out.status, metodo: out.metodo ?? null, raio: out.raio ?? null, dist: dist == null ? null : Math.round(dist * 10) / 10 });
         }
         restaurar?.();
       }

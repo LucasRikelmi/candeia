@@ -111,10 +111,39 @@ test("sem número em via extensa: laranja com o raio no motivo", () => {
   assert.match(r.motivo, /raio de incerteza/);
 });
 
-test("via com menos de 3 pontos não informa raio e não muda a cor", () => {
+test("via com menos de 3 pontos não informa raio e não fica amarela", () => {
   const r = cidade({ rara: trecho(2, 0.01) })("Rua Rara");
   assert.equal(r.raio, null);
+  assert.equal(r.status, "laranja", r.motivo);
+  assert.equal(r.metodo, "eixo");
+});
+
+test("mesmo número em dois pontos a mais de 1 km: laranja, raio é a distância entre eles", () => {
+  const g = cidade({ "8": [ponto("rua", "8", -16.70, -49.30), ponto("rua", "8", -16.71, -49.30)] });
+  const r = g("Rua 8, 8");
+  assert.equal(r.status, "laranja", r.motivo);
+  assert.equal(r.metodo, "numero");
+  assert.ok(r.raio > 1000 && r.raio < 1200, `raio ${r.raio}`);
+});
+
+test("número repetido a poucas centenas de metros: verde vira amarelo", () => {
+  const g = cidade({ "8": [ponto("rua", "8", -16.700, -49.30), ponto("rua", "8", -16.703, -49.30)] });
+  const r = g("Rua 8, 8");
   assert.equal(r.status, "amarelo", r.motivo);
+  assert.equal(r.metodo, "numero");
+});
+
+test("resultado traz confianca da tabela de calibração", () => {
+  const r = cidade({ "1": [ponto("rua", "10", -16.70, -49.30)] })("Rua 1, 10");
+  assert.ok(r.confianca.ate100m > 0.9, JSON.stringify(r.confianca));
+  assert.ok(r.confianca.acima1km < 0.05);
+  assert.equal(G.confiancaDe("cor_inexistente", 0), null);
+});
+
+test("metodo do resultado: falha e cep", () => {
+  const g = cidade({ curta: trecho(5, 0.0002, "74000001") });
+  assert.equal(g("Rua Inexistente Total").metodo, "falha");
+  assert.equal(g("Rua Inexistente Total", "74000001").metodo, "cep");
 });
 
 test("CEP informado restringe o eixo da rua ao trecho dele", () => {

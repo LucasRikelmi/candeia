@@ -154,6 +154,25 @@ Como o acerto não sobe muito, o ganho útil é dizer quando o ponto é incerto.
 - Sem número continua em 36,1% ≤100 m (era 35,5%). A meta de ≥50% do roadmap não é alcançável com via, bairro e CEP; o que resolve é mais informação na entrada (número, quadra/lote, ponto de referência).
 - Pareado ≤100 m: só Candeia 14.313; só NEXO 899.
 
+### Rodada 4: calibração de confiança (PR #4)
+
+As coordenadas não mudam; mudam as cores e o resultado ganha `metodo` e `confianca`.
+
+- `metodo`: `numero`, `quadra_lote`, `quadra`, `eixo`, `cep`, `cruzamento` ou `falha`.
+- Raio do verde: maior distância entre o ponto escolhido e os outros pontos com o mesmo número (ou quadra+lote) na mesma chave de via. Antes era 0. Verde com raio > 100 m vira amarelo; > 1 km vira laranja (vias homônimas em localidades diferentes, comuns nas linhas rurais de RO).
+- Amarelo sem raio (trecho com menos de 3 pontos) vira laranja: errava > 1 km em 30%.
+- `confianca = { ate100m, acima1km, amostra }`: frações observadas no benchmark para a cor e a faixa de raio do resultado (`src/calibracao_tabela.js`, gerado por `bench/calibrar.mjs`). Célula com menos de 200 respostas herda a da cor.
+
+| Cor (cenário A) | antes: n, ≤100 m, >1 km | agora: n, ≤100 m, >1 km |
+|---|---|---|
+| verde | 60.415, 94,4%, 1,5% | 52.811, 99,7%, 0,2% |
+| amarelo | 22.810, 53,3%, 4,2% | 25.840, 53,0%, 2,3% |
+| laranja | 16.214, 14,4%, 48,2% | 20.788, 24,9%, 43,0% |
+
+Validação fora da amostra (ajuste em metade dos municípios, medida na outra, duas dobras): erro de calibração de ~1,1 ponto em P(≤100 m) e ~0,7 ponto em P(>1 km). Brier de P(≤100 m) cai de 0,117–0,122 (só a cor) para 0,096–0,102 (cor e raio).
+
+Limites: o gabarito é o próprio CNEFE e as variantes têm peso igual. A tabela mede consistência do motor com a base, não acerto em campo; validação com pontos conferidos continua pendente. A tabela precisa ser regerada sempre que uma regra de cor mudar.
+
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.

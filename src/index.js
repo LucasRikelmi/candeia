@@ -16,5 +16,7 @@ export {
   RAIO_QUANTIL, RAIO_MIN_PONTOS,
 } from "./posicionar.js";
 export {
-  geocodificar, GATE_EXATO, GATE_FORTE, GATE_FUZZY, LOTE_ADJ, G_COLOR_CAP, RAIO_AMARELO_MAX,
+  geocodificar, GATE_EXATO, GATE_FORTE, GATE_FUZZY, LOTE_ADJ, G_COLOR_CAP, RAIO_AMARELO_MAX, RAIO_VERDE_MAX, RAIO_VERDE_LARANJA,
 } from "./geocodificar.js";
+export { confiancaDe, faixaRaio, FAIXAS_RAIO } from "./calibracao.js";
+export { CALIBRACAO, CALIBRACAO_VALIDACAO } from "./calibracao_tabela.js";
