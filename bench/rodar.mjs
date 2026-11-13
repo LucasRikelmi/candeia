@@ -159,8 +159,17 @@ for (const [cod, linhas] of Object.entries(porMun)) {
           const fora = lista ? lista.filter((e) => Math.abs(e.la - lat) < 1e-7 && Math.abs(e.lo - lon) < 1e-7) : [];
           if (!fora.length) continue; // ponto não está no índice com essa chave: não dá para fazer leave-one-out
           const sai = new Set(fora);
-          const antes = { lista, cep: {} };
-          dic[chave] = lista.filter((e) => !sai.has(e));
+          const antes = { lista, cep: {}, bloco: {} };
+          const resto = lista.filter((e) => !sai.has(e));
+          if (resto.length) dic[chave] = resto;
+          else {
+            // via com um ponto só: some do índice (e do blocking), como se não existisse no CNEFE
+            delete dic[chave];
+            const bl = opts.blocking[cod];
+            for (const tok of chave.split(" ")) {
+              if (bl[tok] && !(tok in antes.bloco)) { antes.bloco[tok] = bl[tok]; bl[tok] = bl[tok].filter((v) => v !== chave); }
+            }
+          }
           for (const e of fora) {
             const arr = opts.cepIndex?.[cod]?.[e.c];
             if (arr && !(e.c in antes.cep)) { antes.cep[e.c] = arr; opts.cepIndex[cod][e.c] = arr.filter((x) => !sai.has(x)); }
@@ -168,6 +177,7 @@ for (const [cod, linhas] of Object.entries(porMun)) {
           opts.cache = new Map();
           restaurar = () => {
             dic[chave] = antes.lista;
+            for (const t in antes.bloco) opts.blocking[cod][t] = antes.bloco[t];
             for (const c in antes.cep) opts.cepIndex[cod][c] = antes.cep[c];
             opts.cache = new Map();
           };

@@ -86,6 +86,28 @@ Pendente: medir latência real (HTTP/2, cache) e conferir limites da hospedagem.
 - Nomes "<2-3 letras> <número>" que não são rodovia: quase todos do DF (QR, SQN, QNM, CLN...) e códigos locais (WE em Belém; JC, VC, VF, RC em GO). Nenhum é sigla de UF, exceto DF 205, que é rodovia. O motor reconhece BR + 27 siglas e exige número de 2 a 3 dígitos logo depois, para não confundir "Al. Santos" com rodovia.
 - Km: 41% das linhas de rodovia têm número; 8% marcam o número como km no modificador (DSC_MODIFICADOR) e 1,6% têm o km no nome; nenhum no complemento. Nos outros 33% com número não dá para saber se é km ou número de porta.
 
+## Benchmark Candeia × NEXO (2026-11-13, recorte sintético)
+
+`pipeline/amostrar_benchmark.py` + `bench/rodar.mjs`. 132 municípios (capital, 2 grandes e 2 pequenos por UF, mais Aparecida de Goiânia), 19.800 endereços com NV_GEO_COORD 1-2, ~106 mil consultas por motor, 6 min. "NEXO" é o `geo_core.js` V2.2 de que o Candeia foi portado, sem índice de CEP; "Candeia" é `src/`. O gabarito é o próprio CNEFE: os números são otimistas.
+
+Acerto até 100 m (cenário A = endereço no índice; B = ponto retirado):
+
+| Variante | Candeia | NEXO | >1 km Candeia | >1 km NEXO |
+|---|---|---|---|---|
+| A limpa | 70,5% | 69,5% | 13,6% | 15,0% |
+| A abreviada | 53,9% | 51,5% | 10,4% | 15,2% |
+| A digitação | 68,7% | 66,8% | 13,2% | 16,1% |
+| A sem vírgula | 44,8% | 42,7% | 10,6% | 15,9% |
+| A sem bairro/CEP | 65,3% | 65,3% | 19,9% | 20,0% |
+| B limpa | 46,9% | 45,8% | 17,7% | 19,2% |
+
+- Pareado (≤100 m, todas as consultas): ambos 61.261; só Candeia 1.935; só NEXO 488; nenhum 43.089.
+- Com número de porta (A limpa): verde acerta 95% até 100 m nos dois. Capitais 93,2% (Candeia) e 90,6% (NEXO).
+- Sem número de porta (34% da amostra): só 34% até 100 m e 30% acima de 1 km. É o maior buraco, concentrado em vias rurais (LINHA, ESTRADA, RAMAL, VICINAL) e municípios pequenos.
+- Cor como confiança: verde é confiável (1,7% acima de 1 km). Amarelo e laranja não separam bem acerto de erro (17% e 38% acima de 1 km no Candeia); o NEXO manda mais casos para vermelho (1.673 contra 356), o que é honesto, mas responde menos.
+- Achado: a chave de via não inclui o tipo. "Rua 1", "Avenida 1" e "Travessa 1" caem na mesma chave, e o motor não usa o tipo para filtrar candidatos. Isso afeta 5% a 10% das chaves e 16% a 26% dos pontos (São Paulo, Goiânia, Aparecida, Porto Velho).
+- A variante "sem vírgula" confirma o `todo` do número sem vírgula: mediana de 120 m.
+
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.
@@ -102,4 +124,4 @@ Pendente: medir latência real (HTTP/2, cache) e conferir limites da hospedagem.
 3. Análise exploratória por UF
 4. ~~Medir tamanho por município~~, ~~medir o índice de vias e decidir o formato~~ (feito; índice gerado para os 5.570 municípios)
 5. Generalização do motor: número sem vírgula, abreviações e títulos, vizinho mais próximo, parser do DF
-6. Benchmark e calibração por UF
+6. Benchmark e calibração por UF (benchmark sintético feito; calibração pendente)
