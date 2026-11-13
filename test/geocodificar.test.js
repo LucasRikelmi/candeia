@@ -63,9 +63,12 @@ test("número sem vírgula: 'Rua Goias 125' não vaza '125' no nome da via", () 
   assert.equal(r.via, "goias");
 });
 
-test("número inexistente deveria usar vizinhos (330 entre 320 e 340), não o eixo da rua", { todo: true }, () => {
+test("número inexistente usa os vizinhos (330 entre 320 e 340), não o eixo da rua", () => {
   const r = geo("Rua Brasil, 330");
-  assert.notEqual(r.status, "amarelo");
+  assert.equal(r.metodo, "interpolacao", r.motivo);
+  assert.equal(r.status, "amarelo"); // não é a porta medida: nunca verde
+  const a = geo("Rua Brasil, 320").coord, b = geo("Rua Brasil, 340").coord;
+  assert.ok(Math.abs(r.coord.lat - (a.lat + b.lat) / 2) < 1e-6 && Math.abs(r.coord.lon - (a.lon + b.lon) / 2) < 1e-6);
 });
 
 test("título abreviado: 'Av. Dr. Goias, 120' deveria casar exato", { todo: true }, () => {
@@ -178,4 +181,23 @@ test("DF: bloco da superquadra é preservado", () => {
     "sqs 308 bloco c": [ponto("edf", null, -15.8205, -47.9105), ponto("edf", null, -15.8206, -47.9106), ponto("edf", null, -15.8207, -47.9107)],
   });
   assert.equal(g("SQS 308 BL C AP 101").viaKey, "sqs 308 bloco c");
+});
+
+// Candeia (PR #6) — interpolação
+test("interpolação respeita o lado da via (paridade)", () => {
+  const g = cidade({ x: [
+    ponto("rua", "100", -16.700, -49.300), ponto("rua", "200", -16.701, -49.300),   // pares
+    ponto("rua", "101", -16.700, -49.301), ponto("rua", "201", -16.701, -49.301),   // ímpares, outro lado
+  ] });
+  const r = g("Rua X, 151");
+  assert.equal(r.metodo, "interpolacao");
+  assert.ok(Math.abs(r.coord.lon + 49.301) < 1e-9, JSON.stringify(r.coord));
+  assert.ok(Math.abs(r.coord.lat + 16.7005) < 1e-6);
+});
+
+test("sem vizinho dos dois lados, ou vizinhos a mais de 1 km, não interpola", () => {
+  const g = cidade({ y: [ponto("rua", "100", -16.70, -49.30), ponto("rua", "200", -16.71, -49.30), ponto("rua", "300", -16.711, -49.30)] });
+  assert.notEqual(g("Rua Y, 400").metodo, "interpolacao");
+  assert.notEqual(g("Rua Y, 150").metodo, "interpolacao"); // 100 e 200 a ~1,1 km
+  assert.equal(g("Rua Y, 250").metodo, "interpolacao");
 });

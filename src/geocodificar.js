@@ -2,7 +2,7 @@
 import { normalizeBase, ABREV, TIPOS_VIA, TIPOS_RODOVIA, ehCodigoRodovia } from "./normalizar.js";
 import { extrairEntidades, _RE_QUADRA_EXT, _RE_LOTE_EXT, _extrairQLDeBairro } from "./extrair.js";
 import { viaSimilarity, bairroSimilarity } from "./similaridade.js";
-import { geomedoidComRaio, raioIncerteza, _haversine } from "./posicionar.js";
+import { geomedoidComRaio, raioIncerteza, interpolarNumero, _haversine } from "./posicionar.js";
 import { confiancaDe } from "./calibracao.js";
 
 export const GATE_EXATO = 0.92; // via = "a mesma rua"
@@ -401,7 +401,25 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
       const mesmoCep = candidatos.filter((c) => c.c === cepNorm);
       if (mesmoCep.length) pool = mesmoCep;
     }
-    ({ coord, raio } = geomedoidComRaio(pool, bairroNorm, q.quadra, ehRodovia, q.numero));
+    // Candeia — número que não está no índice: interpola entre os vizinhos do mesmo lado.
+    let interp = null;
+    // Só com a via casada exata: em via achada por semelhança (digitação, nome parecido) a
+    // interpolação dava um ponto preciso na rua errada (71% acima de 1 km no benchmark).
+    if (q.numero != null && !ehRodovia && !m.nMatch && exata && !cruzamentoUsado) {
+      let poolInterp = pool;
+      if (bairroNorm) {
+        const fb = pool.filter((c) => c.b && bairroSimilarity(c.b, bairroNorm) >= 0.85);
+        if (fb.length) poolInterp = fb;
+      }
+      interp = interpolarNumero(poolInterp, q.numero);
+    }
+    if (interp) {
+      ({ coord, raio } = interp);
+      metodo = "interpolacao";
+      motivo = `Número interpolado entre ${interp.vizinhos[0]} e ${interp.vizinhos[1]}`;
+    } else {
+      ({ coord, raio } = geomedoidComRaio(pool, bairroNorm, q.quadra, ehRodovia, q.numero));
+    }
     if (!coord) { coord = { lat: m.c.la ?? m.c.lat, lon: m.c.lo ?? m.c.lon }; raio = null; }
     if (status === "amarelo" && raio != null && raio > RAIO_AMARELO_MAX) {
       status = "laranja";

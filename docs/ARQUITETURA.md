@@ -189,6 +189,22 @@ No CNEFE do DF a quadra, o conjunto e o bloco fazem parte do nome do logradouro 
 
 GO, RJ e TO também sobem (0,7 a 2,4 pontos) pelo lote sem quadra. A amostra do DF é um município com 150 endereços, e as consultas do benchmark vêm do próprio nome do CNEFE; as abreviações reais (cj, bl, cs) só estão cobertas por testes unitários. A tabela de calibração foi regerada.
 
+### Rodada 6: interpolação de número (PR #6)
+
+Quando o número pedido não está no índice, o motor caía no eixo da rua (8.101 das 13.115 consultas com número no cenário B). Agora interpola entre o maior número menor e o menor número maior do mesmo lado da via (paridade), na proporção do número: a numeração brasileira costuma ser métrica.
+
+- Só com a via casada exata. Em via achada por semelhança, a interpolação dava um ponto preciso na rua errada (71% acima de 1 km em 455 casos).
+- Não interpola com vizinho de um lado só nem com vizinhos a mais de 1 km entre si, nem em rodovia (o km já tem tratamento).
+- `metodo: "interpolacao"`, cor amarela (não é a porta medida), raio = metade do segmento entre os vizinhos.
+
+| | antes | agora | NEXO |
+|---|---|---|---|
+| B limpa ≤100 m (endereço fora do índice) | 48,5% | 59,9% | 45,8% |
+| B limpa >1 km | 15,6% | 15,2% | 19,2% |
+| interpolações no B: ≤100 m, >1 km, mediana | | 87,5%, 0,8%, 11 m | |
+
+O cenário A não muda (≤0,2 ponto). Sobram 102 interpolações no A em via exata mas homônima, com 61% acima de 1 km; amarelo >1 km vai de 2,3% para 2,4%. Calibração regerada.
+
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.
