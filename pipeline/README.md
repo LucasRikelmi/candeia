@@ -22,3 +22,17 @@ python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 ```
 
 Fase 1: métricas por município (SQL, retomável). Fase 2: gera o JSON de verdade para os maiores municípios e alguns de tamanho médio e mede o gzip real. Fase 3: estima o gzip de todos com a razão medida e grava `summary.json`. O gzip dos municípios fora da amostra é estimativa, com o intervalo da razão registrado.
+
+## Geração do índice de distribuição
+
+`gerar_indice.py` produz o que o cliente baixa: um `.json.gz` por município (dicionário `{via: [entradas]}` com as chaves do NEXO) e, nos municípios acima de `--limiar-entradas` (90 mil), um `index.json.gz` de vias mais fatias `fNNN.json.gz`, com cada via inteira em uma só fatia. `manifesto.json` lista tipo, contagens e (nome, bytes, sha256) de cada arquivo. A saída é determinística.
+
+```sh
+.venv/bin/python pipeline/gerar_indice.py --parquet DIR_PARQUET --saida DIR_SAIDA
+```
+
+As chaves de via, tipo, bairro, número, quadra e lote são geradas por `normalizacao.py`, um port de `src/normalizar.js`. `test_gerar_indice.py` prova a paridade com o motor rodando o ETL JS (`paridade.mjs`) sobre os mesmos dados; com `CANDEIA_PARQUET_UF=<pasta uf=XX>` ele confere todas as combinações reais de uma UF.
+
+```sh
+python -m unittest discover -s pipeline -p 'test_*.py'   # precisa de duckdb e de node
+```
