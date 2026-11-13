@@ -4,3 +4,5 @@ dados/
 *.zip
 *.csv
 *.parquet
+__pycache__/
+*.pyc

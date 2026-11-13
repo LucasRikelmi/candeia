@@ -92,3 +92,11 @@ test("ehCodigoRodovia exige número de 2 a 3 dígitos após a sigla", () => {
   assert.equal(ehCodigoRodovia(["qr", "427"]), false);
   assert.equal(ehCodigoRodovia(["sp", "1"]), false);
 });
+
+test("abreviações de tipo e título no início do endereço", () => {
+  assert.equal(extrairEntidades("R. das Flores, 10").tipo, "rua");
+  assert.equal(extrairEntidades("Al. Santos, 100").tipo, "alameda");
+  assert.equal(extrairEntidades("Av. Dr. Jose Silva, 7").via, "doutor jose silva");
+  assert.equal(extrairEntidades("Rua R 5, 10").via, "r 5");      // "R" no meio não vira "rua"
+  assert.equal(extrairEntidades("AL 101, km 5").tipo, "al");      // rodovia AL-101 não vira alameda
+});

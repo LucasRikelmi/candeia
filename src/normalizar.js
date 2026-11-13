@@ -77,6 +77,8 @@ export const TIPOS_VIA = new Set([
   // Prefixos de topônimo informal que antecedem o nome real da via
   "favela", "comunidade", "nucleo", "gleba", "loteamento", "residencial",
   "sitio", "chacara", "fazenda", "assentamento",
+  // Candeia — tipos rurais e locais frequentes no CNEFE (erros do benchmark concentrados neles)
+  "linha", "ramal", "vicinal", "beco", "acesso", "travessao", "ladeira", "largo", "caminho",
 ]);
 
 // Prefixos de rodovia (código da via, não nome) — "BR-153"/"GO-070" devem
@@ -130,6 +132,23 @@ export const ABREV = [
   [/\bjd\b/g,  "jardim"],
   [/\bpq\b/g,  "parque"],
   [/\bpca\b/g, "praca"],
+  // Candeia — abreviações de tipo e de título medidas no benchmark (variante "abreviada").
+  // "r" e "al" só no início: "Rua R 5" e "AL 101" (rodovia) não podem virar "rua"/"alameda".
+  [/^r\b/g,   "rua"],
+  [/^al\b(?![\s-]*\d)/g, "alameda"],
+  [/^est\b/g, "estrada"],
+  [/\bdr\b/g,  "doutor"],
+  [/\bdra\b/g, "doutora"],
+  [/\bprof\b/g, "professor"],
+  [/\bprofa\b/g, "professora"],
+  [/\bcel\b/g, "coronel"],
+  [/\bgov\b/g, "governador"],
+  [/\bpres\b/g, "presidente"],
+  [/\bsen\b(?!\s+denominacao)/g, "senador"], // CNEFE grafa "SEN DENOMINACAO" (sem denominação)
+  [/\bdep\b/g, "deputado"],
+  [/\beng\b/g, "engenheiro"],
+  [/\bmal\b/g, "marechal"],
+  [/\bgal\b/g, "general"],
 ];
 
 // "X COM Y" como marcador de cruzamento sem "esq"/"esquina"/"c/" — só conta
