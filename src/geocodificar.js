@@ -1,13 +1,16 @@
-// Portado do geo_core.js V2.2 do NEXO, sem mudança de comportamento.
+// Portado do geo_core.js V2.2 do NEXO; mudanças do Candeia marcadas com "Candeia".
 import { normalizeBase, ABREV, TIPOS_VIA, TIPOS_RODOVIA, ehCodigoRodovia } from "./normalizar.js";
 import { extrairEntidades, _RE_QUADRA_EXT, _RE_LOTE_EXT, _extrairQLDeBairro } from "./extrair.js";
 import { viaSimilarity, bairroSimilarity } from "./similaridade.js";
-import { geomedoid } from "./posicionar.js";
+import { geomedoidComRaio, raioIncerteza } from "./posicionar.js";
 
 export const GATE_EXATO = 0.92; // via = "a mesma rua"
 export const GATE_FORTE = 0.85; // rua encontrada → amarelo
 export const GATE_FUZZY = 0.7;  // suspeita fraca → laranja; abaixo → vermelho
 export const LOTE_ADJ   = 2;    // |diff| de lote para "ao lado"
+// Candeia — eixo de rua com raio de incerteza acima disto não é amarelo: no benchmark, raio > 500 m
+// concentra quase todo erro > 1 km (50% deles contra 1% com raio <= 500 m, endereços sem número).
+export const RAIO_AMARELO_MAX = 500;
 
 // #3 — Teto de cor por NV_GEO_COORD:
 //   g=3 (estimada)    → no máximo azul  (coordenada não é a porta real)
@@ -69,7 +72,7 @@ export function geocodificar(consulta, indiceMunicipios, opts = {}) {
   const falha = (status, motivo) => ({
     status, viaScore: 0, via: null, viaKey: null,
     quadra: null, lote: null, numero: null, km: null, ehRodovia: false,
-    coord: centMun, motivo, bairroMatch: false, cepMatch: false,
+    coord: centMun, raio: null, motivo, bairroMatch: false, cepMatch: false,
     candidatosNaRua: 0, _q: null,
   });
 
@@ -171,7 +174,7 @@ export function geocodificar(consulta, indiceMunicipios, opts = {}) {
         }
       }
       if (porCep.length) {
-        const coordCep = geomedoid(porCep, bairroNorm, q.quadra, false, null);
+        const { coord: coordCep, raio: raioCep } = geomedoidComRaio(porCep, bairroNorm, q.quadra, false, null);
         if (coordCep) {
           return {
             status: "laranja",
@@ -179,7 +182,7 @@ export function geocodificar(consulta, indiceMunicipios, opts = {}) {
             viaScore: 0, viaKey: null,
             via: q.via, quadra: q.quadra, lote: q.lote, numero: q.numero, km: q.km,
             ehRodovia: false,
-            coord: coordCep, bairroMatch: false, cepMatch: true,
+            coord: coordCep, raio: raioCep, bairroMatch: false, cepMatch: true,
             bairroIndexado: "", candidatosNaRua: porCep.length, _q: q,
           };
         }
@@ -332,14 +335,27 @@ export function geocodificar(consulta, indiceMunicipios, opts = {}) {
   }
 
   // --- Coordenada ---
-  let coord;
+  let coord, raio;
   if (status === "verde" || status === "azul") {
     // Coordenada direta do melhor candidato
     coord = { lat: m.c.la ?? m.c.lat, lon: m.c.lo ?? m.c.lon };
+    // Candeia — verde é o ponto do próprio endereço; azul espalha pela quadra.
+    raio = status === "verde" ? 0 : raioIncerteza(coord, candidatos.filter((c) => c.q === q.quadra));
   } else {
-    // #7 amarelo e #9 laranja: geomedoid para garantir ponto on-street
-    coord = geomedoid(candidatos, bairroNorm, q.quadra, ehRodovia, q.numero);
-    if (!coord) coord = { lat: m.c.la ?? m.c.lat, lon: m.c.lo ?? m.c.lon };
+    // #7 amarelo e #9 laranja: geomedoid para garantir ponto on-street.
+    // Candeia — restringe ao CEP informado quando a via tem pontos nele (rua longa costuma
+    // trocar de CEP por trecho): +0,7 a +1,9 ponto em <=100 m no benchmark.
+    let pool = candidatos;
+    if (cepNorm) {
+      const mesmoCep = candidatos.filter((c) => c.c === cepNorm);
+      if (mesmoCep.length) pool = mesmoCep;
+    }
+    ({ coord, raio } = geomedoidComRaio(pool, bairroNorm, q.quadra, ehRodovia, q.numero));
+    if (!coord) { coord = { lat: m.c.la ?? m.c.lat, lon: m.c.lo ?? m.c.lon }; raio = null; }
+    if (status === "amarelo" && raio != null && raio > RAIO_AMARELO_MAX) {
+      status = "laranja";
+      motivo += ` [trecho extenso: raio de incerteza ~${raio} m]`;
+    }
   }
 
   // #22 — Via "passou" no score (amarelo/laranja) mas o bairro não bateu em
@@ -366,9 +382,10 @@ export function geocodificar(consulta, indiceMunicipios, opts = {}) {
     if (pontosCep.length && fracaoCep <= LIMIAR_CEP_GENERICO) {
       const bairroGeralPorCep = ((opts.cepBairroIndex[String(codMunicipio)] || {})[cepNorm]) || null;
       if (bairroGeralPorCep && bairroSimilarity(bairroGeralPorCep, bairroNorm) >= GATE_FORTE) {
-        const coordCep = geomedoid(pontosCep, bairroNorm, q.quadra, false, null);
+        const { coord: coordCep, raio: raioCep } = geomedoidComRaio(pontosCep, bairroNorm, q.quadra, false, null);
         if (coordCep) {
           coord = coordCep;
+          raio = raioCep;
           status = "laranja";
           bairroMatchFinal = true;
           bairroIndexadoFinal = bairroGeralPorCep;
@@ -383,7 +400,7 @@ export function geocodificar(consulta, indiceMunicipios, opts = {}) {
     status, motivo, viaScore, viaKey,
     via: q.via, quadra: q.quadra, lote: q.lote, numero: q.numero, km: q.km,
     ehRodovia,
-    coord, bairroMatch: bairroMatchFinal, cepMatch: m.cMatch,
+    coord, raio, bairroMatch: bairroMatchFinal, cepMatch: m.cMatch,
     bairroIndexado: bairroIndexadoFinal,
     candidatosNaRua: candidatosNaRuaFinal, _q: q,
   };

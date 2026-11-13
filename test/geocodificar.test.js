@@ -78,7 +78,7 @@ const ponto = (tp, n, la, lo, b = "centro") => ({ tp, n, q: null, l: null, b, c:
 function cidade(dic) {
   const idx = { "9": dic };
   const opts = { blocking: G.construirBlockingIndex(idx), cepIndex: G.construirIndiceCep(idx), cache: new Map() };
-  return (end) => G.geocodificar({ codMunicipio: "9", enderecoCru: end, bairro: "", cepConsulta: "" }, idx, opts);
+  return (end, cep = "") => G.geocodificar({ codMunicipio: "9", enderecoCru: end, bairro: "", cepConsulta: cep }, idx, opts);
 }
 
 test("via que termina em número continua inteira quando existe ('Avenida T 63')", () => {
@@ -91,4 +91,40 @@ test("tipo da consulta separa 'Rua 1' de 'Avenida 1' na mesma chave", () => {
   const g = cidade({ "1": [ponto("rua", "10", -16.70, -49.30), ponto("avenida", "10", -16.80, -49.40)] });
   assert.equal(g("Avenida 1, 10").coord.lat, -16.80);
   assert.equal(g("Rua 1, 10").coord.lat, -16.70);
+});
+
+// Candeia (PR #3) — endereço sem número: raio de incerteza e filtro por CEP.
+// 0,001 grau de latitude ~ 111 m.
+const trecho = (n, passo, cep = "", lat0 = -16.7) =>
+  Array.from({ length: n }, (_, i) => ({ ...ponto("rua", null, lat0 - i * passo, -49.3), c: cep }));
+
+test("sem número em rua curta: amarelo com raio pequeno", () => {
+  const r = cidade({ curta: trecho(10, 0.0002) })("Rua Curta");
+  assert.equal(r.status, "amarelo", r.motivo);
+  assert.ok(r.raio != null && r.raio < 200, `raio ${r.raio}`);
+});
+
+test("sem número em via extensa: laranja com o raio no motivo", () => {
+  const r = cidade({ longa: trecho(30, 0.002) })("Rua Longa");
+  assert.equal(r.status, "laranja", r.motivo);
+  assert.ok(r.raio > G.RAIO_AMARELO_MAX, `raio ${r.raio}`);
+  assert.match(r.motivo, /raio de incerteza/);
+});
+
+test("via com menos de 3 pontos não informa raio e não muda a cor", () => {
+  const r = cidade({ rara: trecho(2, 0.01) })("Rua Rara");
+  assert.equal(r.raio, null);
+  assert.equal(r.status, "amarelo", r.motivo);
+});
+
+test("CEP informado restringe o eixo da rua ao trecho dele", () => {
+  const g = cidade({ dupla: [...trecho(10, 0.0002, "74000001", -16.70), ...trecho(10, 0.0002, "74000002", -16.80)] });
+  assert.ok(g("Rua Dupla", "74000002").coord.lat < -16.79);
+  assert.ok(g("Rua Dupla", "74000001").coord.lat > -16.71);
+});
+
+test("verde devolve raio 0", () => {
+  const r = cidade({ "1": [ponto("rua", "10", -16.70, -49.30)] })("Rua 1, 10");
+  assert.equal(r.status, "verde");
+  assert.equal(r.raio, 0);
 });

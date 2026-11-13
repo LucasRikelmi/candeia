@@ -1,4 +1,4 @@
-// Portado do geo_core.js V2.2 do NEXO, sem mudança de comportamento.
+// Portado do geo_core.js V2.2 do NEXO. Candeia: geomedoidComRaio/raioIncerteza (raio de incerteza).
 import { bairroSimilarity } from "./similaridade.js";
 
 // Centroide ponderado (mantido para uso legado/externo).
@@ -46,6 +46,30 @@ export function outlierParaVia(ehRodovia) {
 // raio urbano — ver outlierParaVia(). numeroAlvo: número/km da consulta,
 // usado só quando ehRodovia para aproximar o pool do trecho certo da via.
 export function geomedoid(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo) {
+  return _medoidDoPool(_poolGeomedoid(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo), ehRodovia);
+}
+
+// Candeia — mesma escolha de ponto do geomedoid, devolvendo também o raio de incerteza: o
+// quantil 80% da distância entre o ponto escolhido e os pontos do pool (já filtrado por
+// bairro/km/quadra). Endereço sem número cai no "eixo da rua", e o erro real é limitado pela
+// extensão do trecho, não pelo motor. Medido no benchmark (docs/ARQUITETURA.md, PR #3): o erro
+// fica abaixo do raio em ~80% dos casos e raio > 500 m concentra quase todo erro > 1 km.
+// Pool com menos de RAIO_MIN_PONTOS pontos não diz a extensão da via: raio = null.
+export const RAIO_QUANTIL = 0.8;
+export const RAIO_MIN_PONTOS = 3;
+export function geomedoidComRaio(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo) {
+  const pool = _poolGeomedoid(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo);
+  const coord = _medoidDoPool(pool, ehRodovia);
+  return { coord, raio: coord ? raioIncerteza(coord, pool) : null, pontos: pool.length };
+}
+
+export function raioIncerteza(coord, pool) {
+  if (!coord || pool.length < RAIO_MIN_PONTOS) return null;
+  const ds = pool.map((c) => _haversine(coord.lat, coord.lon, c.la ?? c.lat, c.lo ?? c.lon)).sort((a, b) => a - b);
+  return Math.round(ds[Math.floor(RAIO_QUANTIL * (ds.length - 1))]);
+}
+
+function _poolGeomedoid(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo) {
   // 1) Pool inicial: apenas candidatos com coordenadas válidas
   let pool = candidatos.filter((c) => {
     const la = c.la ?? c.lat, lo = c.lo ?? c.lon;
@@ -87,6 +111,10 @@ export function geomedoid(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo)
     const fq = pool.filter((c) => c.q === quadra);
     if (fq.length >= 1) pool = fq;
   }
+  return pool;
+}
+
+function _medoidDoPool(pool, ehRodovia) {
   if (!pool.length) return null;
   if (pool.length === 1)
     return { lat: pool[0].la ?? pool[0].lat, lon: pool[0].lo ?? pool[0].lon };
