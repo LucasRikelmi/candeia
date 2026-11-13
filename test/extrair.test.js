@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extrairEntidades, extensoParaNumeral, normalizeBase } from "../src/index.js";
+import { extrairEntidades, extensoParaNumeral, normalizeBase, ehCodigoRodovia } from "../src/index.js";
 
 test("normalizeBase remove acento, caixa e pontuação", () => {
   assert.equal(normalizeBase("Av. Goiás, Nº 10"), "av goias n 10");
@@ -60,4 +60,35 @@ test("km decimal não vaza para o nome da via", () => {
   assert.equal(e.via, "222");
   assert.equal(e.tipo, "go");
   assert.equal(e.km, "5.5");
+});
+
+// Candeia — rodovias das 27 UFs (medido no CNEFE: pipeline/medir_rodovias.py)
+test("sigla de qualquer UF seguida de número vira rodovia", () => {
+  const e = extrairEntidades("SP-330 KM 100");
+  assert.equal(e.tipo, "sp");
+  assert.equal(e.via, "330");
+  assert.equal(e.numero, "100");
+  assert.equal(extrairEntidades("Rod. PR 281").via, "pr 281");
+  assert.equal(extrairEntidades("Estrada RS 647").via, "rs 647");
+});
+
+test("sigla de UF sem número não é rodovia (falsos positivos)", () => {
+  const al = extrairEntidades("Al. Santos, 100");
+  assert.notEqual(al.tipo, "al");
+  assert.equal(al.numero, "100");
+  assert.equal(extrairEntidades("Rua Se Nova, 10").tipo, "rua");
+});
+
+test("códigos locais que não são sigla de UF não viram rodovia", () => {
+  assert.equal(extrairEntidades("QR 427 Conjunto 10").tipo, null);
+  assert.equal(extrairEntidades("WE 25, 100").tipo, null);
+  assert.equal(extrairEntidades("JC 58, 12").tipo, null);
+});
+
+test("ehCodigoRodovia exige número de 2 a 3 dígitos após a sigla", () => {
+  assert.equal(ehCodigoRodovia(["rs", "647"]), true);
+  assert.equal(ehCodigoRodovia(["br", "153"]), true);
+  assert.equal(ehCodigoRodovia(["al", "santos"]), false);
+  assert.equal(ehCodigoRodovia(["qr", "427"]), false);
+  assert.equal(ehCodigoRodovia(["sp", "1"]), false);
 });

@@ -1,5 +1,5 @@
 // Portado do geo_core.js V2.2 do NEXO, sem mudança de comportamento.
-import { normalizeBase, ABREV, TIPOS_VIA, TIPOS_RODOVIA } from "./normalizar.js";
+import { normalizeBase, ABREV, TIPOS_VIA, TIPOS_RODOVIA, ehCodigoRodovia } from "./normalizar.js";
 import { extrairEntidades, _RE_QUADRA_EXT, _RE_LOTE_EXT, _extrairQLDeBairro } from "./extrair.js";
 import { viaSimilarity, bairroSimilarity } from "./similaridade.js";
 import { geomedoid } from "./posicionar.js";
@@ -82,9 +82,12 @@ export function geocodificar(consulta, indiceMunicipios, opts = {}) {
   // Opção B: raio de outlier maior pra rodovia. `tipo` cobre "BR 153"/
   // "GO-070" (tipo="br"/"go") direto; primeiro token de `via` cobre
   // "Rodovia GO-070" (tipo="rodovia", mas o "go" sobra dentro do nome da via).
-  const primeiroTokenVia = q.via ? q.via.split(" ")[0] : null;
+  // Candeia: o código no nome também marca rodovia quando o tipo é outro
+  // ("Estrada RS 647", "Estrada BR 364": 8,4 M linhas do tipo ESTRADA no CNEFE),
+  // e sigla só conta seguida de número ("Al. Santos" não é rodovia).
+  const tokensVia = q.via ? q.via.split(" ") : [];
   const ehRodovia =
-    TIPOS_RODOVIA.has(q.tipo) || q.tipo === "rodovia" || TIPOS_RODOVIA.has(primeiroTokenVia);
+    TIPOS_RODOVIA.has(q.tipo) || q.tipo === "rodovia" || ehCodigoRodovia(tokensVia, 0);
 
   // #20 — Mesmo ABREV já usado pra via (jd→jardim, vl→vila, pq→parque...)
   // aplicado ao bairro: bairro informado abreviado ("JD BELA VISTA") nunca batia

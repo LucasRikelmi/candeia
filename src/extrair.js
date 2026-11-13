@@ -1,5 +1,5 @@
 // Portado do geo_core.js V2.2 do NEXO, sem mudança de comportamento.
-import { normalizeBase, normNum, ABREV, normalizarPrefixoRodovia, TIPOS_VIA, TIPOS_RODOVIA, RUIDO_COMPLEMENTO, RE_COMPL_GLUED, _RE_COM_CRUZAMENTO, extensoParaNumeral } from "./normalizar.js";
+import { normalizeBase, normNum, ABREV, normalizarPrefixoRodovia, TIPOS_VIA, ehCodigoRodovia, RUIDO_COMPLEMENTO, RE_COMPL_GLUED, _RE_COM_CRUZAMENTO, extensoParaNumeral } from "./normalizar.js";
 
 // ----------------------------------------------------------------------
 // 2) EXTRAÇÃO DE ENTIDADES — LADO RUNTIME (endereço digitado, "sujo")
@@ -34,7 +34,7 @@ export function _extrairViaDeBloco(bloco) {
   let tokens = b.split(/\s+/).filter(Boolean);
   tokens = tokens.filter((tok, i) => tok !== tokens[i - 1]);
   let tipo = null;
-  if (tokens.length && (TIPOS_VIA.has(tokens[0]) || TIPOS_RODOVIA.has(tokens[0]))) {
+  if (tokens.length && (TIPOS_VIA.has(tokens[0]) || ehCodigoRodovia(tokens, 0))) {
     tipo = tokens[0];
     tokens = tokens.slice(1);
   }

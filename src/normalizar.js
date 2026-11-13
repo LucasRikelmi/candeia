@@ -85,15 +85,31 @@ export const TIPOS_VIA = new Set([
 // sobrevivia como um token único colado, que não batia com o jeito que o
 // CNEFE tokeniza a mesma via (ex.: "br" + "153" separados), derrubando o
 // blocking por token e forçando fallback de varredura completa em toda
-// consulta de rodovia. Lista pequena de propósito — GO é o estado de
-// implantação (MG por fronteira); adicione outros UFs aqui se necessário.
-export const TIPOS_RODOVIA = new Set(["br", "go", "mg"]);
+// consulta de rodovia.
+//
+// Candeia: generalizado de br/go/mg para BR + as 27 siglas de UF. Medido no
+// CNEFE 2022 (pipeline/medir_rodovias.py, 2026-11-13): BR aparece nas 27 UFs e
+// cada UF usa a própria sigla (às vezes a de UF vizinha). Várias siglas colidem
+// com palavras e abreviações ("al" = alameda, "es", "se", "to", "pa", "ma"),
+// então uma sigla só conta como rodovia quando vem SEGUIDA DE NÚMERO de 2 a 3
+// dígitos (ver ehCodigoRodovia). Prefixos estaduais próprios (RST, ERS, VRS,
+// LMG, MGT, PRT, ICR...) ainda não estão cobertos.
+export const SIGLAS_UF = [
+  "ac", "al", "am", "ap", "ba", "ce", "df", "es", "go", "ma", "mg", "ms", "mt", "pa",
+  "pb", "pe", "pi", "pr", "rj", "rn", "ro", "rr", "rs", "sc", "se", "sp", "to",
+];
+export const TIPOS_RODOVIA = new Set(["br", ...SIGLAS_UF]);
+
+// true quando tokens[i] é sigla de rodovia e tokens[i+1] é o número da rodovia.
+export function ehCodigoRodovia(tokens, i = 0) {
+  return TIPOS_RODOVIA.has(tokens[i]) && /^\d{2,3}$/.test(tokens[i + 1] || "");
+}
 
 // Normaliza "br-153" / "br153" / "BR 153" → sempre "br 153" (espaço único),
 // para que tokenização, blocking e comparação exata funcionem igual
 // independente de como a consulta ou o CNEFE grafou o hífen. Roda depois de
 // ABREV (que já expandiu "rod"→"rodovia") e antes de _extrairViaDeBloco.
-export const RE_PREFIXO_RODOVIA = /\b(br|go|mg)[\s-]*(\d{2,3})\b/g;
+export const RE_PREFIXO_RODOVIA = new RegExp(`\\b(${[...TIPOS_RODOVIA].join("|")})[\\s-]*(\\d{2,3})\\b`, "g");
 export function normalizarPrefixoRodovia(texto) {
   return texto.replace(RE_PREFIXO_RODOVIA, "$1 $2");
 }
@@ -122,7 +138,7 @@ export const ABREV = [
 // é preposição comum demais (ex.: um complemento "sala com garagem") e
 // geraria falso positivo de cruzamento.
 export const _RE_COM_CRUZAMENTO = new RegExp(
-  `^(.*?)\\s+com\\s+((?:${[...TIPOS_VIA, ...TIPOS_RODOVIA].join("|")})\\b.*)$`,
+  `^(.*?)\\s+com\\s+((?:${[...TIPOS_VIA].join("|")})\\b.*|(?:${[...TIPOS_RODOVIA].join("|")})[\\s-]*\\d{2,3}\\b.*)$`,
 );
 
 export function normalizeBase(texto) {

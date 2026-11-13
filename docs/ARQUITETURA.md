@@ -28,7 +28,7 @@ O que se mantém: quadra e lote lidos do complemento (`NUM_QUADRA` do CNEFE é c
 O que impede a generalização para o país:
 
 1. **Número de porta frágil.** Só é lido logo após a primeira vírgula e se for só dígitos. "Rua X 125" e "Rua X, 125A" perdem o número; no primeiro caso o número vaza para o nome da via. (`todo` nos testes)
-2. **Abreviações e títulos ajustados para GO.** Não há "Dr.", "Prof.", "Cel.", "Al.", "Est.". O ETL concatena `NOM_TITULO_SEGLOGR` ao nome, então "Av. Dr. X" nunca é exato. `TIPOS_RODOVIA` = br/go/mg. (`todo`)
+2. **Abreviações e títulos ajustados para GO.** Não há "Dr.", "Prof.", "Cel.", "Al.", "Est.". O ETL concatena `NOM_TITULO_SEGLOGR` ao nome, então "Av. Dr. X" nunca é exato. (`todo`) Rodovias já generalizadas para BR + 27 UFs.
 3. **Número só casa exato.** Sem vizinho mais próximo nem interpolação, cai no eixo da rua. (`todo`)
 4. **DF sem suporte.** SQS/QNM/conjunto/bloco não são reconhecidos.
 5. **Confiança por tabela fixa**, não calibrada.
@@ -76,6 +76,15 @@ Consequência para o desenho: um arquivo por município fica abaixo de 1 MB (gzi
 - A decisão de fatiar por via (e não por distrito) se mantém: só SP capital tem divisão útil em distritos.
 
 Pendente: medir latência real (HTTP/2, cache) e conferir limites da hospedagem. O índice de vias é o custo fixo por consulta nos grandes e precisa ser baixado inteiro.
+
+## Rodovias no CNEFE (2026-11-13)
+
+`pipeline/medir_rodovias.py`, 148 s, pico de 722 MB.
+
+- 1,79 M linhas do tipo RODOVIA: 30% sem código, BR em 24% (nas 27 UFs), o resto com a sigla da própria UF ou de vizinha. Siglas estaduais próprias (RST, ERS, VRS no RS; LMG, MGT em MG; PRT no PR; ICR em SC) são minoria e ainda não são reconhecidas.
+- 8,4 M linhas do tipo ESTRADA, várias com código de rodovia ("RS 647", "BR 364"). Por isso a classe "rodovia" (raio de outlier de 50 km) passou a ser decidida pelo código no nome, não só pelo tipo.
+- Nomes "<2-3 letras> <número>" que não são rodovia: quase todos do DF (QR, SQN, QNM, CLN...) e códigos locais (WE em Belém; JC, VC, VF, RC em GO). Nenhum é sigla de UF, exceto DF 205, que é rodovia. O motor reconhece BR + 27 siglas e exige número de 2 a 3 dígitos logo depois, para não confundir "Al. Santos" com rodovia.
+- Km: 41% das linhas de rodovia têm número; 8% marcam o número como km no modificador (DSC_MODIFICADOR) e 1,6% têm o km no nome; nenhum no complemento. Nos outros 33% com número não dá para saber se é km ou número de porta.
 
 ## Riscos de arquitetura em aberto
 

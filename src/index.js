@@ -1,7 +1,7 @@
 // API pública do Candeia (fase 0: porte fiel do motor do NEXO).
 export {
   normalizeBase, normNum, extensoParaNumeral, EXTENSO_PARA_NUM,
-  TIPOS_VIA, TIPOS_RODOVIA, ABREV,
+  TIPOS_VIA, TIPOS_RODOVIA, SIGLAS_UF, ehCodigoRodovia, ABREV,
 } from "./normalizar.js";
 export { extrairEntidades } from "./extrair.js";
 export {
