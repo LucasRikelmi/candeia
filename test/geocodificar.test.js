@@ -4,6 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cidadeSintetica } from "./helpers.js";
+import * as G from "../src/index.js";
 
 const { geo } = cidadeSintetica();
 
@@ -52,12 +53,12 @@ test("município não indexado → vermelho", () => {
 // a suíte. Cada uma vira teste normal quando for corrigida.
 // ---------------------------------------------------------------------------
 
-test("número sem vírgula: 'Av. Brazil 340' deveria achar o 340", { todo: true }, () => {
+test("número sem vírgula: 'Av. Brazil 340' acha o 340", () => {
   const r = geo("Av. Brazil 340");
   assert.equal(r.numero, "340");
 });
 
-test("número sem vírgula: 'Rua Goias 125' não deveria vazar '125' no nome da via", { todo: true }, () => {
+test("número sem vírgula: 'Rua Goias 125' não vaza '125' no nome da via", () => {
   const r = geo("Rua Goias 125");
   assert.equal(r.via, "goias");
 });
@@ -70,4 +71,24 @@ test("número inexistente deveria usar vizinhos (330 entre 320 e 340), não o ei
 test("título abreviado: 'Av. Dr. Goias, 120' deveria casar exato", { todo: true }, () => {
   const r = geo("Av. Dr. Goias, 120");
   assert.equal(r.status, "verde");
+});
+
+// Candeia — melhorias medidas no benchmark ------------------------------------
+const ponto = (tp, n, la, lo, b = "centro") => ({ tp, n, q: null, l: null, b, c: "", la, lo, g: 1 });
+function cidade(dic) {
+  const idx = { "9": dic };
+  const opts = { blocking: G.construirBlockingIndex(idx), cepIndex: G.construirIndiceCep(idx), cache: new Map() };
+  return (end) => G.geocodificar({ codMunicipio: "9", enderecoCru: end, bairro: "", cepConsulta: "" }, idx, opts);
+}
+
+test("via que termina em número continua inteira quando existe ('Avenida T 63')", () => {
+  const g = cidade({ "t 63": [ponto("avenida", "100", -16.7, -49.3)], "t": [ponto("rua", "63", -16.6, -49.2)] });
+  const r = g("Avenida T 63");
+  assert.equal(r.viaKey, "t 63");
+});
+
+test("tipo da consulta separa 'Rua 1' de 'Avenida 1' na mesma chave", () => {
+  const g = cidade({ "1": [ponto("rua", "10", -16.70, -49.30), ponto("avenida", "10", -16.80, -49.40)] });
+  assert.equal(g("Avenida 1, 10").coord.lat, -16.80);
+  assert.equal(g("Rua 1, 10").coord.lat, -16.70);
 });

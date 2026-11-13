@@ -122,6 +122,19 @@ export function geocodificar(consulta, indiceMunicipios, opts = {}) {
   let { viaKey, viaScore } = _resolverVia(q.via, ruas, codMunicipio, opts);
   let cruzamentoUsado = false;
 
+  // Candeia — número sem vírgula: fica com "via sem o último número + número de porta"
+  // só quando isso casa melhor que a via inteira ("Rua Goias 125" → "goias", 125;
+  // "Avenida T 63" continua "t 63" porque essa via existe).
+  if (q.viaSemNumero && viaScore < 1) {
+    const alt = _resolverVia(q.viaSemNumero, ruas, codMunicipio, opts);
+    if (alt.viaKey && alt.viaScore >= GATE_EXATO && alt.viaScore > viaScore) {
+      viaKey = alt.viaKey;
+      viaScore = alt.viaScore;
+      q.via = q.viaSemNumero;
+      q.numero = q.numeroSemVirgula;
+    }
+  }
+
   // #16 — Endereço de esquina ("Rua X esq. Rua Y" / "Rua X c/ Rua Y"): a via
   // do cruzamento vem à parte em q.viaCruzamento (extrairEntidades corta
   // antes do "esq"/"c/" pro bloco principal, mas guarda o que vem depois).
@@ -175,7 +188,14 @@ export function geocodificar(consulta, indiceMunicipios, opts = {}) {
     return falha("vermelho", `Via sem correspondência (max=${viaScore.toFixed(2)})`);
   }
 
-  const candidatos = ruas[viaKey];
+  // Candeia — a chave de via não inclui o tipo: "Rua 1", "Avenida 1" e "Travessa 1" dividem a
+  // mesma lista (16% a 26% dos pontos nas capitais medidas). Quando a consulta traz o tipo e ele
+  // existe entre os candidatos, restringe a eles.
+  let candidatos = ruas[viaKey];
+  if (q.tipo && !TIPOS_RODOVIA.has(q.tipo)) {
+    const mesmoTipo = candidatos.filter((c) => c.tp === q.tipo);
+    if (mesmoTipo.length && mesmoTipo.length < candidatos.length) candidatos = mesmoTipo;
+  }
 
   // --- Pré-filtro por bairro no desempate ---
   // Quando a consulta não tem nenhum sinal numérico (quadra/lote/número)

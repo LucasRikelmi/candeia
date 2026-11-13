@@ -108,6 +108,23 @@ Acerto até 100 m (cenário A = endereço no índice; B = ponto retirado):
 - Achado: a chave de via não inclui o tipo. "Rua 1", "Avenida 1" e "Travessa 1" caem na mesma chave, e o motor não usa o tipo para filtrar candidatos. Isso afeta 5% a 10% das chaves e 16% a 26% dos pontos (São Paulo, Goiânia, Aparecida, Porto Velho).
 - A variante "sem vírgula" confirma o `todo` do número sem vírgula: mediana de 120 m.
 
+### Rodada 2 (mesmo recorte, depois das correções)
+
+Correções: número sem vírgula (só aceita "via sem o último número" se ela casar exato e melhor que a via inteira), abreviações de tipo e título (R., Al., Est., Dr., Prof., Cel., Gov., Pres., Sen., Dep., Eng., Mal., Gal.; "r" e "al" só no início), filtro de candidatos pelo tipo de via, e tipos rurais (linha, ramal, vicinal, beco, acesso, travessão...).
+
+| Variante | Candeia antes | Candeia agora | NEXO | >1 km agora |
+|---|---|---|---|---|
+| A limpa | 70,5% | 72,3% | 69,5% | 11,2% |
+| A abreviada | 53,9% | 78,8% | 51,5% | 6,2% |
+| A digitação | 68,7% | 70,0% | 66,8% | 11,6% |
+| A sem vírgula | 44,8% | 90,8% | 42,7% | 3,6% |
+| A sem bairro/CEP | 65,3% | 67,6% | 65,3% | 17,0% |
+| B limpa | 46,9% | 47,8% | 45,8% | 15,8% |
+
+- Pareado ≤100 m: só Candeia 13.355; só NEXO 620; ambos 61.129; nenhum 31.669.
+- Com número de porta (A limpa): 91,1% até 100 m. Sem número: 35,5% (continua o maior buraco).
+- Regressões conferidas: a maioria é endereço com o mesmo número gravado em pontos diferentes da mesma via (ruído do CNEFE), onde a escolha entre eles é arbitrária.
+
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.

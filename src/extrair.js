@@ -173,5 +173,17 @@ export function extrairEntidades(enderecoCru) {
     if (viaCruzamento0) viaCruzamento = extensoParaNumeral(viaCruzamento0);
   }
 
-  return { tipo, via, viaCruzamento, quadra, lote, numero, km };
+  // Candeia — número de porta sem vírgula ("Rua Goias 125"). Ambíguo com via que termina em
+  // número ("Avenida T 63", "Rua 15"), então aqui só se propõe a alternativa; geocodificar()
+  // fica com ela apenas se a via sem o número casar melhor no índice.
+  let viaSemNumero = null, numeroSemVirgula = null;
+  if (numero == null && km == null) {
+    const tv = via.split(" ");
+    if (tv.length >= 2 && /^\d{1,5}[a-z]?$/.test(tv[tv.length - 1])) {
+      viaSemNumero = tv.slice(0, -1).join(" ");
+      numeroSemVirgula = normNum(tv[tv.length - 1]);
+    }
+  }
+
+  return { tipo, via, viaCruzamento, quadra, lote, numero, km, viaSemNumero, numeroSemVirgula };
 }
