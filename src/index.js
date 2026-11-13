@@ -20,3 +20,4 @@ export {
 } from "./geocodificar.js";
 export { confiancaDe, faixaRaio, FAIXAS_RAIO } from "./calibracao.js";
 export { CALIBRACAO, CALIBRACAO_VALIDACAO } from "./calibracao_tabela.js";
+export { criarGeocodificador, MAX_FATIAS_CEP } from "./loader.js";

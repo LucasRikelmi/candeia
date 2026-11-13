@@ -205,6 +205,26 @@ Quando o número pedido não está no índice, o motor caía no eixo da rua (8.1
 
 O cenário A não muda (≤0,2 ponto). Sobram 102 interpolações no A em via exata mas homônima, com 61% acima de 1 km; amarelo >1 km vai de 2,3% para 2,4%. Calibração regerada.
 
+## Loader do índice publicado (PR #7)
+
+`criarGeocodificador({ base, fetch?, verificarHash?, maxMunicipios? })` lê o manifesto uma vez e carrega cada município sob demanda (LRU de 20 municípios).
+
+- Arquivo único: baixa o dicionário inteiro e monta blocking, índice de CEP e de bairro por CEP uma vez.
+- Fatiado: baixa o índice de vias e monta o blocking só com as chaves (as vias não baixadas ficam com lista vazia, que o motor nunca lê). Antes de chamar o motor, resolve as variantes que ele tenta (via, via sem número, via estruturada, cruzamento) com o mesmo `_resolverVia` e baixa só as fatias dessas vias.
+- Pontos de CEP fora da via escolhida só são usados pelo motor quando a via não é encontrada (#17) ou no eixo com bairro que não confere (#22). O loader roda sem eles e, só nesses casos, baixa as fatias do CEP e roda de novo. CEP espalhado em mais de 3 fatias não é baixado (`MAX_FATIAS_CEP`): 83% a 99% dos pontos das capitais medidas têm CEP em até 3 fatias.
+- sha256 conferido com o manifesto quando chegam os bytes do arquivo. Servidor com `Content-Encoding: gzip` faz o fetch descomprimir antes, e aí o hash não é conferido: publicar como `application/gzip` sem `Content-Encoding`.
+
+Paridade com o motor sobre o dicionário inteiro (`bench/paridade_loader.mjs`, fatias de 50 mil entradas, 150 endereços × 3 formas de consulta):
+
+| Município | fatias | iguais | KB por consulta fria (mediana / máx.) |
+|---|---|---|---|
+| São Paulo | 73 | 450/450 | 1.329 / 2.357 |
+| Fortaleza | 18 | 450/450 | 637 / 1.149 |
+| Goiânia | 12 | 450/450 | 672 / 1.204 |
+| Brasília | 20 | 448/450 | 749 / 1.247 |
+
+As 2 diferenças do DF são um CEP espalhado em mais de 3 fatias. A paridade com dados reais achou um bug que o teste sintético não pegava (blocking aninhado duas vezes, o que forçava varredura completa e mudava a via escolhida).
+
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.
