@@ -373,7 +373,8 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
         motivo += ` [mesma identificação em pontos a até ${raio} m]`;
       }
     } else {
-      metodo = "quadra";
+      // azul também sai de verde rebaixado pelo teto de NV_GEO_COORD 3 (coordenada estimada)
+      metodo = m.nMatch ? "numero" : m.qMatch && m.lMatch ? "quadra_lote" : "quadra";
       raio = raioIncerteza(coord, candidatos.filter((c) => c.q === q.quadra));
     }
   } else {
