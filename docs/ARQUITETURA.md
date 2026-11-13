@@ -51,13 +51,24 @@ Conversão sem perda (todas as colunas como texto + `lat`/`lon`), zstd, particio
 - DF: 236 MB de CSV → 25 MB de Parquet sem perda. O "3,5 MB" citado no README só é alcançável descartando colunas e/ou agregando pontos; o número do README precisa dizer o quê.
 - Sem número de porta (`NUM_ENDERECO` 0/vazio ou modificador SN): 23,8% no país, 97% no DF, 65% em GO.
 
-Consequência: o Parquet sem perda dos municípios grandes (dezenas a ~200 MB) não serve como formato de cliente no navegador. O formato de distribuição precisa ser um índice enxuto (só as colunas usadas pelo motor, pontos agregados) e provavelmente fatiado por logradouro nas capitais. O tamanho desse índice enxuto ainda não foi medido.
+## Medições do índice enxuto (2026-11-13)
+
+`pipeline/medir_indice_enxuto.py` reproduz o dicionário do motor (`{via: [entradas]}`, entradas deduplicadas por tp/n/q/l/b/c/la/lo/g com contagem k, sem NV_GEO_COORD ≥ 5) a partir do Parquet. Fase 1 mediu os 5.570 municípios por SQL; fase 2 gerou o JSON e o gzip reais para 25 municípios (os 11 maiores e 14 espalhados no ranking); o gzip dos demais é estimado com a razão mediana da amostra (0,0926; min 0,0787, max 0,1059; o estimador de JSON errou 0,4%).
+
+- 111,1 M de linhas viram 91,2 M de entradas (−17,9%).
+- Brasil inteiro: JSON ~10,9 GB, **gzip estimado ~1,01 GB** (faixa de incerteza da razão: ~0,86 a ~1,16 GB). Compressão medida só com gzip nível 6; outros compressores não foram testados.
+- Por município (gzip estimado): mediana 68 KB, p90 327 KB, p99 1,9 MB. 334 municípios passam de 0,5 MB, 144 de 1 MB, 11 de 5 MB e 2 de 20 MB.
+- Maiores (gzip, medido na amostra): São Paulo 39,8 MB (3,6 M entradas, 48 mil vias), Rio de Janeiro 20,4 MB, Salvador 10,4 MB, Brasília 9,0 MB, Fortaleza 9,8 MB, Belo Horizonte 8,4 MB, Manaus 7,8 MB, Goiânia 6,7 MB, Curitiba 6,4 MB, Recife 5,5 MB, Belém 5,4 MB.
+- O índice enxuto em gzip é de ~1/5 a ~1/3 do Parquet sem perda nos grandes (SP 39,8 vs 192,8 MB; DF 9,0 vs 25,2 MB). Em Boa Vista a razão foi 0,43, então a razão varia com o município e não deve ser extrapolada de uma cidade pequena.
+- O DF, mesmo enxuto e comprimido, tem 9,0 MB, não os 3,5 MB do README. Esse número só se obtém com mais agregação do que a feita aqui (por exemplo, colapsar pontos por face de quadra ou codificar coordenadas de forma compacta); isso ainda não foi medido.
+
+Consequência para o desenho: um arquivo por município fica abaixo de 1 MB (gzip) em mais de 97% dos municípios, mas não nos 144 acima disso, que incluem as capitais e as maiores cidades. Para esses, o desenho precisa fatiar: um índice de vias leve (nomes, tokens, bairro, CEP, caixa envolvente) baixado primeiro, e fatias de pontos por via ou faixa de CEP baixadas sob demanda. O tamanho desse índice de vias ainda não foi medido; ele precisa ser baixado inteiro para a busca fuzzy, então é o novo teto de custo por município (SP tem 48 mil vias).
 
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.
-2. **Formato do cliente.** Parquet como artefato canônico do pipeline é bom (auditável, colunar). Para o cliente, ler Parquet exige uma biblioteca e não traz índice de busca. Candidato: formato próprio já indexado, gerado do Parquet. Decidir só depois de medir.
-3. **Redução 236 MB → 3,5 MB no DF.** Precisa de explicação do que foi descartado ou agregado antes de ir para o README como número.
+2. **Formato do cliente.** Parquet como artefato canônico do pipeline é bom (auditável, colunar). Para o cliente, ler Parquet exige uma biblioteca e não traz índice de busca. Candidato: formato próprio já indexado, gerado do Parquet, com fatias para os municípios grandes. Falta medir o índice de vias e prototipar.
+3. **Redução 236 MB → 3,5 MB no DF.** Medido: sem perda 25 MB, enxuto e comprimido 9,0 MB. O número do README só vale se o método de agregação for descrito.
 4. **Benchmark.** O sintético mede robustez a ruído, não calibra confiança. Gabarito real depende de pontos conferidos em campo, que ainda não existem.
 5. **Hospedagem.** Limites de tamanho de npm, jsDelivr e GitHub Pages precisam ser conferidos antes de escolher a distribuição.
 6. **CI.** O benchmark do CI roda sobre um recorte fixo e versionado, nunca sobre o CNEFE inteiro.
@@ -65,8 +76,8 @@ Consequência: o Parquet sem perda dos municípios grandes (dezenas a ~200 MB) n
 ## Ordem de execução
 
 1. ~~Esqueleto do repositório e porte com testes de regressão~~
-2. Pipeline CNEFE → Parquet por UF, em streaming (a máquina de desenvolvimento não comporta SP em memória), com manifesto e hash
+2. ~~Pipeline CNEFE → Parquet por UF, com manifesto e hash~~ (feito)
 3. Análise exploratória por UF
-4. Medir tamanho por município e decidir o formato de distribuição
+4. ~~Medir tamanho por município~~ (feito); medir o índice de vias e decidir o formato de distribuição
 5. Generalização do motor: número sem vírgula, abreviações e títulos, vizinho mais próximo, parser do DF
 6. Benchmark e calibração por UF
