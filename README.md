@@ -2,7 +2,7 @@
 
 Geocodificação de endereços brasileiros que roda no seu próprio código, sem servidor, sem chave de API e sem custo por consulta.
 
-> **Status: em planejamento.** Este README descreve a premissa e o desenho do projeto. Ainda não há pacote publicado, e nenhuma métrica de acurácia foi medida. Quando houver números, eles entram aqui com a metodologia.
+> **Status: em desenvolvimento, sem versão publicada.** O motor, o índice das 27 UFs e o loader funcionam; o índice ainda não está hospedado em URL pública. Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
 ## O problema
 
@@ -22,31 +22,31 @@ O IBGE publica o CNEFE, o cadastro de endereços usado no Censo, com coordenadas
 - **Resposta com qualidade explícita.** Cada resultado traz o nível em que o endereço foi encontrado e uma estimativa de erro em metros, em vez de fingir precisão que não tem.
 - **Endereço do jeito que é digitado.** Abreviações ("R.", "Av.", "Tv."), rodovias com a sigla da UF, quadra e lote no lugar do número de porta, complemento no campo errado.
 
-## Como deve funcionar
+## Uso
 
 ```js
-import { geocodificar } from "candeia";
+import { criarGeocodificador } from "candeia";
 
-const r = await geocodificar({
-  uf: "MG",
-  municipio: "Belo Horizonte",
-  logradouro: "Rua dos Bobos",
-  numero: "0",
-  quadra: "75",
-  bairro: "Centro",
-  cep: "30000-000",
+const geo = criarGeocodificador({ base: "https://<onde o índice estiver>/" });
+const r = await geo.geocodificar("Rua 8, Qd 21 Lt 4", {
+  municipio: "5208707", // código IBGE
+  bairro: "Setor Central",
+  cep: "74000-000",
 });
 
 // {
-//   lat, lon,
-//   nivel: "numero" | "quadra_lote" | "logradouro" | "bairro" | "cep" | "municipio",
-//   confianca,     // calibrada contra o benchmark, não é só um score de similaridade
-//   raio_m,        // erro estimado em metros
-//   candidatos: [] // alternativas quando há empate
+//   status: "verde" | "azul" | "amarelo" | "laranja" | "vermelho",
+//   metodo: "numero" | "quadra_lote" | "lote" | "quadra" | "interpolacao" | "eixo" | "cep" | "cruzamento" | "falha",
+//   coord: { lat, lon },
+//   raio,        // metros: até onde o ponto pode estar (null quando não dá para estimar)
+//   confianca,   // { ate100m, acima1km, amostra }: frações medidas no benchmark para essa cor e raio
+//   viaKey, motivo, ...
 // }
 ```
 
-(Interface proposta. Pode mudar até a primeira versão. O código atual em `src/` ainda expõe a API herdada do NEXO; ver [docs/ARQUITETURA.md](docs/ARQUITETURA.md).)
+Município pequeno é um arquivo só. Município grande baixa o índice de vias e só a fatia da via pedida: no benchmark, uma consulta fria em São Paulo baixa ~1,3 MB e a seguinte na mesma via não baixa nada. O loader confere o sha256 de cada arquivo contra o manifesto. A página `exemplo/index.html` mostra o uso no navegador.
+
+Medido no benchmark (cenário com o endereço no índice, variante limpa): 72,9% até 100 m no geral, 91% com número de porta; verde acerta até 100 m em 99,7% dos casos. Endereço sem número fica em ~36%, limitado pela extensão da via, e o `raio` diz isso.
 
 Fluxo de uma consulta:
 
