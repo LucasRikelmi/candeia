@@ -64,6 +64,19 @@ Conversão sem perda (todas as colunas como texto + `lat`/`lon`), zstd, particio
 
 Consequência para o desenho: um arquivo por município fica abaixo de 1 MB (gzip) em mais de 97% dos municípios, mas não nos 144 acima disso, que incluem as capitais e as maiores cidades. Para esses, o desenho precisa fatiar: um índice de vias leve (nomes, tokens, bairro, CEP, caixa envolvente) baixado primeiro, e fatias de pontos por via ou faixa de CEP baixadas sob demanda. O tamanho desse índice de vias ainda não foi medido; ele precisa ser baixado inteiro para a busca fuzzy, então é o novo teto de custo por município (SP tem 48 mil vias).
 
+## Índice de distribuição gerado (2026-11-13)
+
+`pipeline/gerar_indice.py` sobre o Parquet, 27 UFs, 5.570 municípios, 2.470 s no i3-6100U com HDD, sem erros. Formato versão 1, limiar 90.000 entradas por município, 50.000 entradas por fatia, gzip determinístico nível 6.
+
+- **Total:** 996.728.982 bytes (~997 MB) em 6.327 arquivos. Bate com a estimativa da medição (~1,01 GB).
+- **Únicos:** 5.425 municípios, 630,7 MB; maior arquivo 960.819 bytes (abaixo de 1 MB).
+- **Fatiados:** 145 municípios, 757 fatias; maior fatia do país 614.872 bytes (SP capital), menor 1.219.
+- **Custo por consulta nos grandes** (índice + 1 fatia): SP capital 717 KB + ≤615 KB ≈ 1,3 MB, em vez de 40 MB. RJ 303 KB + ≤520 KB. DF 301 KB + ≤483 KB.
+- **Palmas e Brasília** têm muitas vias para poucas entradas (quadras numeradas): índice relativamente grande (Palmas 72 KB, DF 301 KB).
+- A decisão de fatiar por via (e não por distrito) se mantém: só SP capital tem divisão útil em distritos.
+
+Pendente: medir latência real (HTTP/2, cache) e conferir limites da hospedagem. O índice de vias é o custo fixo por consulta nos grandes e precisa ser baixado inteiro.
+
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.
@@ -78,6 +91,6 @@ Consequência para o desenho: um arquivo por município fica abaixo de 1 MB (gzi
 1. ~~Esqueleto do repositório e porte com testes de regressão~~
 2. ~~Pipeline CNEFE → Parquet por UF, com manifesto e hash~~ (feito)
 3. Análise exploratória por UF
-4. ~~Medir tamanho por município~~ (feito); medir o índice de vias e decidir o formato de distribuição
+4. ~~Medir tamanho por município~~, ~~medir o índice de vias e decidir o formato~~ (feito; índice gerado para os 5.570 municípios)
 5. Generalização do motor: número sem vírgula, abreviações e títulos, vizinho mais próximo, parser do DF
 6. Benchmark e calibração por UF
