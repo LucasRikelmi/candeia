@@ -41,6 +41,18 @@ O que impede a generalização para o país:
 - CSV `;`, CRLF, sem acentos, 34 colunas.
 - Amostra RR (260 mil linhas): 94% NV_GEO_COORD=1; 33% sem número; 32 mil das 121 mil chaves município+rua+número têm mais de uma coordenada.
 
+## Medições do pipeline (2026-11-13, CNEFE 2022, 27 UFs)
+
+Conversão sem perda (todas as colunas como texto + `lat`/`lon`), zstd, particionado por município, rodada num i3-6100U com HDD, DuckDB 2.0.0, 3 GB de memória, 2 threads:
+
+- 111.102.875 linhas, 5.570 municípios. CSV 18,18 GB → Parquet 3,21 GB (5,7x). Todas as linhas com `lat`/`lon` numéricos (falta conferir sentinelas como 0).
+- Tempo: 27 UFs em ~81 min somados; SP sozinha levou ~55 min (spill em disco com 645 partições abertas), as outras 26 juntas ~26 min.
+- Maiores municípios em Parquet sem perda: São Paulo 193 MB, Rio de Janeiro 102 MB, Salvador 48 MB, Belo Horizonte 38 MB, Fortaleza 33 MB, Curitiba 28 MB, Brasília 25 MB, Goiânia 22 MB, Porto Alegre 21 MB, Recife 20 MB.
+- DF: 236 MB de CSV → 25 MB de Parquet sem perda. O "3,5 MB" citado no README só é alcançável descartando colunas e/ou agregando pontos; o número do README precisa dizer o quê.
+- Sem número de porta (`NUM_ENDERECO` 0/vazio ou modificador SN): 23,8% no país, 97% no DF, 65% em GO.
+
+Consequência: o Parquet sem perda dos municípios grandes (dezenas a ~200 MB) não serve como formato de cliente no navegador. O formato de distribuição precisa ser um índice enxuto (só as colunas usadas pelo motor, pontos agregados) e provavelmente fatiado por logradouro nas capitais. O tamanho desse índice enxuto ainda não foi medido.
+
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.
