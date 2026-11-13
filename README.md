@@ -109,4 +109,4 @@ Candeia é a lamparina de óleo. Na parábola da moeda perdida, a mulher acende 
 
 ## Licença
 
-A definir. O código e os dados terão licenças separadas, e os dados seguem os termos de uso do IBGE.
+Código: [MIT](LICENSE). Índice de dados: [CC BY 4.0](DADOS.md), derivado do CNEFE 2022 do IBGE, com atribuição obrigatória ao IBGE em redistribuições.
