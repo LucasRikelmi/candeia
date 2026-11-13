@@ -12,3 +12,13 @@ python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 - Confere se o número de linhas do Parquet bate com o do CSV; se não bater, para com erro.
 - Ao ler, a partição `COD_MUNICIPIO` é inferida como inteiro pelo DuckDB; use `hive_types={'COD_MUNICIPIO': VARCHAR}` se precisar do texto.
 - Os dados gerados nunca entram no repositório (`.gitignore`).
+
+## Medição do índice enxuto
+
+`medir_indice_enxuto.py` dimensiona o índice que o motor realmente usa (dicionário `{via: [entradas]}` deduplicado, sem NV_GEO_COORD ≥ 5) a partir do Parquet sem perda. Somente leitura sobre `--parquet`; escreve em `--saida` (outra pasta).
+
+```sh
+.venv/bin/python pipeline/medir_indice_enxuto.py --parquet DIR_PARQUET --saida DIR_SAIDA
+```
+
+Fase 1: métricas por município (SQL, retomável). Fase 2: gera o JSON de verdade para os maiores municípios e alguns de tamanho médio e mede o gzip real. Fase 3: estima o gzip de todos com a razão medida e grava `summary.json`. O gzip dos municípios fora da amostra é estimativa, com o intervalo da razão registrado.
