@@ -148,3 +148,42 @@ function _medoidDoPool(pool, ehRodovia) {
   }
   return best ? { lat: best.la ?? best.lat, lon: best.lo ?? best.lon } : null;
 }
+
+// Candeia — número que não está no índice: interpola entre o maior número menor e o menor número
+// maior do MESMO LADO da via (mesma paridade). No Brasil a numeração costuma ser métrica (distância
+// do início da via), então a posição entre os vizinhos é proporcional ao número. Devolve null quando
+// só há vizinho de um lado ou quando os vizinhos estão longe demais para a interpolação valer.
+// raio = metade da distância entre os vizinhos (o ponto está no segmento entre eles).
+export const INTERP_MAX_SEGMENTO_M = 1000;
+export function interpolarNumero(pool, numero) {
+  const alvo = parseInt(numero, 10);
+  if (isNaN(alvo)) return null;
+  const comN = [];
+  for (const c of pool) {
+    const n = parseInt(c.n, 10), la = c.la ?? c.lat, lo = c.lo ?? c.lon;
+    if (!isNaN(n) && n !== alvo && typeof la === "number" && typeof lo === "number") comN.push({ n, la, lo });
+  }
+  const mesmoLado = comN.filter((x) => x.n % 2 === alvo % 2);
+  const base = mesmoLado.some((x) => x.n < alvo) && mesmoLado.some((x) => x.n > alvo) ? mesmoLado : comN;
+  let nAbaixo = -Infinity, nAcima = Infinity;
+  for (const x of base) {
+    if (x.n < alvo && x.n > nAbaixo) nAbaixo = x.n;
+    if (x.n > alvo && x.n < nAcima) nAcima = x.n;
+  }
+  if (!Number.isFinite(nAbaixo) || !Number.isFinite(nAcima)) return null;
+  // Número repetido em vários pontos: mediana das coordenadas dele.
+  const ponto = (n) => {
+    const xs = base.filter((x) => x.n === n);
+    const med = (k) => xs.map((x) => x[k]).sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+    return { la: med("la"), lo: med("lo") };
+  };
+  const a = ponto(nAbaixo), b = ponto(nAcima);
+  const seg = _haversine(a.la, a.lo, b.la, b.lo);
+  if (seg > INTERP_MAX_SEGMENTO_M) return null;
+  const t = (alvo - nAbaixo) / (nAcima - nAbaixo);
+  return {
+    coord: { lat: a.la + t * (b.la - a.la), lon: a.lo + t * (b.lo - a.lo) },
+    raio: Math.round(seg / 2),
+    vizinhos: [String(nAbaixo), String(nAcima)],
+  };
+}
