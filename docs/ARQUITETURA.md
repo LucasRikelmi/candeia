@@ -125,6 +125,35 @@ Correções: número sem vírgula (só aceita "via sem o último número" se ela
 - Com número de porta (A limpa): 91,1% até 100 m. Sem número: 35,5% (continua o maior buraco).
 - Regressões conferidas: a maioria é endereço com o mesmo número gravado em pontos diferentes da mesma via (ruído do CNEFE), onde a escolha entre eles é arbitrária.
 
+### Rodada 3: endereço sem número (PR #3)
+
+Diagnóstico antes de mexer no motor (endereços SN sem quadra/lote, 6.038):
+
+- A via inteira é a única informação. A mediana da distância entre o gabarito e os pontos da própria via é 579 m, então o eixo da rua tem um teto baixo de acerto, qualquer que seja o motor.
+- Filtrar o eixo pelo CEP informado: +0,7 ponto (SN) e +1,9 ponto (número omitido) em ≤100 m. Adotado.
+- Preferir pontos SN quando a consulta não traz número: +3,4 pontos nos SN, mas −8,3 pontos em quem só omitiu o número. Rejeitado: otimiza a população do gabarito, não a do usuário.
+
+Como o acerto não sobe muito, o ganho útil é dizer quando o ponto é incerto. O motor passa a devolver `raio` (metros): quantil 80% da distância do ponto escolhido aos pontos do trecho usado (0 no verde; `null` com menos de 3 pontos). Amarelo com raio > 500 m vira laranja.
+
+| Variante | Candeia ≤100 m | NEXO ≤100 m | Candeia >1 km | erro ≤ raio |
+|---|---|---|---|---|
+| A limpa | 72,6% | 69,5% | 11,1% | 83,6% |
+| A número omitido (nova) | 50,3% | 47,1% | 7,2% | 78,2% |
+| A sem vírgula | 90,8% | 42,7% | 3,5% | 89,1% |
+| B limpa | 48,4% | 45,8% | 15,7% | 67,5% |
+
+"erro ≤ raio" usa piso de 25 m (precisão do próprio CNEFE).
+
+| Cor (cenário A) | antes: n, >1 km | agora: n, >1 km |
+|---|---|---|
+| verde | 60.402, 1,4% | 60.415, 1,5% |
+| amarelo | 21.996, 27,2% | 22.810, 4,2% |
+| laranja | 3.971, 49,6% | 16.214, 48,2% |
+
+- Amarelo passa a ser confiável (4,2% acima de 1 km, contra 27,2%). O preço é mais laranja: 16 mil resultados em vez de 4 mil, com 48% deles acima de 1 km.
+- Sem número continua em 36,1% ≤100 m (era 35,5%). A meta de ≥50% do roadmap não é alcançável com via, bairro e CEP; o que resolve é mais informação na entrada (número, quadra/lote, ponto de referência).
+- Pareado ≤100 m: só Candeia 14.313; só NEXO 899.
+
 ## Riscos de arquitetura em aberto
 
 1. **Capitais grandes.** "Um arquivo por município" provavelmente não cabe no navegador para São Paulo e outras capitais (não medido). Desenho candidato: índice leve de logradouros por município, mais shards de pontos por logradouro ou faixa de CEP, baixados sob demanda.

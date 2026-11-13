@@ -11,7 +11,10 @@ export { jaroWinkler, jaccardTokens, viaSimilarity, bairroSimilarity } from "./s
 export {
   construirBlockingIndex, construirIndiceCep, construirIndiceCepBairro, construirMapaMunicipio,
 } from "./indices.js";
-export { centroide, geomedoid, _haversine, OUTLIER_M, OUTLIER_M_RODOVIA } from "./posicionar.js";
 export {
-  geocodificar, GATE_EXATO, GATE_FORTE, GATE_FUZZY, LOTE_ADJ, G_COLOR_CAP,
+  centroide, geomedoid, geomedoidComRaio, raioIncerteza, _haversine, OUTLIER_M, OUTLIER_M_RODOVIA,
+  RAIO_QUANTIL, RAIO_MIN_PONTOS,
+} from "./posicionar.js";
+export {
+  geocodificar, GATE_EXATO, GATE_FORTE, GATE_FUZZY, LOTE_ADJ, G_COLOR_CAP, RAIO_AMARELO_MAX,
 } from "./geocodificar.js";

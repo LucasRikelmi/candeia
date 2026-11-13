@@ -82,6 +82,8 @@ export function variantes(r) {
   const via = [r.tipo, r.titulo, r.nome].filter(Boolean).join(" ");
   const out = { limpa: { end: via + complemento(r), bairro: r.bairro, cep: r.cep } };
   if (temNumero(r)) out.sem_virgula = { end: `${via} ${r.num}`, bairro: r.bairro, cep: r.cep };
+  // Quem digita costuma omitir o número; no CNEFE "sem número" é quase sempre rural (SN), outra população.
+  if (temNumero(r)) out.numero_omitido = { end: via, bairro: r.bairro, cep: r.cep };
   const ab = [ABREV_TIPO[r.tipo] || r.tipo, ABREV_TITULO[r.titulo] || r.titulo, r.nome].filter(Boolean).join(" ");
   if (ab !== via) out.abreviada = { end: ab + complemento(r), bairro: r.bairro, cep: r.cep };
   const err = comErro(r.nome, r.id);
@@ -111,6 +113,12 @@ export function resumir(res) {
     ate_100m: pct((x) => x.dist != null && x.dist <= 100),
     ate_200m: pct((x) => x.dist != null && x.dist <= 200),
     acima_1km: pct((x) => x.dist == null || x.dist > 1000),
+    // raio de incerteza devolvido pelo motor (quando devolve): % de erros dentro dele e raio mediano
+    com_raio: pct((x) => x.raio != null),
+    erro_dentro_do_raio: (() => { const r = res.filter((x) => x.raio != null && x.dist != null);
+      return r.length ? +(100 * r.filter((x) => x.dist <= Math.max(x.raio, 25)).length / r.length).toFixed(1) : null; })(),
+    raio_mediano_m: (() => { const r = res.filter((x) => x.raio != null).map((x) => x.raio).sort((a, b) => a - b);
+      return r.length ? quantil(r, 0.5) : null; })(),
   };
 }
 function agrupar(res, chave) {
@@ -194,7 +202,7 @@ for (const [cod, linhas] of Object.entries(porMun)) {
           const c = out.coord;
           const dist = c && Number.isFinite(c.lat) ? haversine(lat, lon, c.lat, c.lon) : null;
           resultados[nome].push({ id: r.id, uf: r.uf, cod, porte: r.porte, com_numero: temNumero(r), cenario,
-            variante, consulta: q.end, status: out.status, dist: dist == null ? null : Math.round(dist * 10) / 10 });
+            variante, consulta: q.end, status: out.status, raio: out.raio ?? null, dist: dist == null ? null : Math.round(dist * 10) / 10 });
         }
         restaurar?.();
       }
@@ -217,6 +225,8 @@ for (const { nome } of motores) {
     por_uf_A_limpa: agrupar(A.filter((x) => x.variante === "limpa"), (x) => x.uf),
     por_porte_A_limpa: agrupar(A.filter((x) => x.variante === "limpa"), (x) => x.porte),
     por_numero_A_limpa: agrupar(A.filter((x) => x.variante === "limpa"), (x) => (x.com_numero ? "com número" : "sem número")),
+    por_cor_sem_numero: agrupar(A.filter((x) => (x.variante === "limpa" && !x.com_numero) || x.variante === "numero_omitido"),
+      (x) => `${x.variante === "limpa" ? "SN" : "omitido"} ${x.status}`),
   };
   writeFileSync(join(args.saida, `resultados_${nome}.json`), JSON.stringify(res));
 }
