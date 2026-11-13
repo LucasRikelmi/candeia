@@ -60,7 +60,7 @@ Fluxo de uma consulta:
 ## Dados
 
 - **Fonte:** CNEFE, Censo 2022, IBGE. O IBGE permite o reuso citando a fonte. O termo exato de uso será conferido e transcrito aqui antes da primeira publicação de dados.
-- **Formato:** Parquet particionado por UF e município, com manifesto versionado e hash. Em amostra de duas UFs, a conversão reduziu o CSV bruto em duas ordens de grandeza (por exemplo, 236 MB para 3,5 MB no DF). Tamanhos do Brasil inteiro ainda serão medidos.
+- **Formato:** o artefato canônico do pipeline é Parquet sem perda, particionado por UF e município (CSV 18,2 GB → Parquet 3,2 GB no país). O que o cliente baixa é um índice próprio em JSON comprimido com gzip: um arquivo por município (abaixo de 1 MB em 5.425 dos 5.570) e, nos 145 maiores, um índice de vias mais fatias de pontos de até ~0,6 MB. O país inteiro soma ~1 GB; o pior caso de uma consulta (São Paulo capital) baixa ~1,3 MB. Detalhes e medições em `docs/ARQUITETURA.md`.
 - **Pipeline:** os dados nunca entram por pull request. Eles são gerados apenas pelo pipeline do repositório, de forma reproduzível.
 - **Análise por UF:** o repositório também guarda a análise exploratória de cada UF (tipos de logradouro, abreviações, proporção de endereços sem número, qualidade de CEP). É dela que saem as regras de normalização.
 
