@@ -26,8 +26,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--parquet", required=True, type=Path)
     ap.add_argument("--saida", required=True, type=Path)
-    ap.add_argument("--memoria", default="3GB")
-    ap.add_argument("--threads", type=int, default=2)
+    ap.add_argument("--memoria", default="1500MB")
+    ap.add_argument("--threads", type=int, default=1)
     a = ap.parse_args()
 
     pq, out = a.parquet.resolve(), a.saida.resolve()
@@ -53,6 +53,11 @@ def main() -> None:
              ({comp_km})                                 AS km_comp,
              regexp_extract(upper(trim(coalesce(NOM_SEGLOGR, ''))), '{RE_PREFIXO}', 1) AS prefixo
       FROM read_parquet('{glob}', hive_partitioning = true)
+      -- Só materializa o que interessa (rodovias e nomes com cara de código): a tabela inteira
+      -- (111 M linhas com texto) estoura a memória de um notebook de 11 GB.
+      WHERE upper(coalesce(NOM_TIPO_SEGLOGR, '')) LIKE '%ROD%'
+         OR upper(coalesce(NOM_TIPO_SEGLOGR, '')) LIKE 'ESTRADA%'
+         OR regexp_matches(upper(trim(coalesce(NOM_SEGLOGR, ''))), '{RE_PREFIXO}')
     """)
     print(f"leitura: {time.time() - t0:.0f}s", flush=True)
 
@@ -97,7 +102,7 @@ def main() -> None:
 
     resumo = {
         "tempo_s": round(time.time() - t0),
-        "linhas_total": con.execute("SELECT count(*) FROM r").fetchone()[0],
+        "linhas_materializadas": con.execute("SELECT count(*) FROM r").fetchone()[0],
         "linhas_rodovia": con.execute("SELECT count(*) FROM r WHERE tipo LIKE 'RODOVIA%'").fetchone()[0],
         "tipos_com_rod": con.execute(
             "SELECT tipo, count(*) FROM r WHERE tipo LIKE '%ROD%' OR tipo LIKE 'ESTRADA%' GROUP BY 1 ORDER BY 2 DESC LIMIT 10"
