@@ -20,7 +20,6 @@ Retomável por UF (manifesto em _manifesto/<UF>.json).
 from __future__ import annotations
 
 import argparse
-import functools
 import gzip
 import hashlib
 import json
@@ -39,24 +38,25 @@ ENC = json.JSONEncoder(separators=(",", ":"), ensure_ascii=False).encode
 ORDEM = "via, tp, n NULLS FIRST, q NULLS FIRST, l NULLS FIRST, b, c, la, lo, g NULLS FIRST"
 
 
-def _registrar_udfs(con: duckdb.DuckDBPyConnection) -> None:
-    V = duckdb.sqltypes.VARCHAR
-    cache = functools.lru_cache(maxsize=None)
-    con.create_function("py_norm_base", cache(lambda s: normalize_base(s)), [V], V)
-    con.create_function("py_norm_num", cache(lambda s: norm_num(s) or ""), [V], V)
-    con.create_function("py_chave_via", cache(lambda t, s: chave_via(t, s)), [V, V], V)
-
-
 def _comp(nome: str) -> str:
     partes = [f"CASE WHEN upper(trim(coalesce(NOM_COMP_ELEM{i}, ''))) = '{nome}' THEN VAL_COMP_ELEM{i} END"
               for i in range(1, 6)]
     return "coalesce(" + ", ".join(partes) + ")"
 
 
+def _mapa(con, tabela: str, chaves: tuple[str, ...], saida: str, fn) -> None:
+    """Cria a tabela temporária `tabela(chaves..., saida)` aplicando `fn` aos valores distintos de `raw`."""
+    cols = ", ".join(chaves)
+    valores = con.execute(f"SELECT DISTINCT {cols} FROM raw").fetchall()
+    con.execute(f"CREATE OR REPLACE TEMP TABLE {tabela}(" + ", ".join(f"{c} VARCHAR" for c in chaves) + f", {saida} VARCHAR)")
+    con.executemany(f"INSERT INTO {tabela} VALUES ({', '.join('?' for _ in chaves)}, ?)",
+                    [(*v, fn(*v)) for v in valores])
+
+
 def criar_tabela_entradas(con: duckdb.DuckDBPyConnection, glob: str) -> None:
     """Tabela temporária `e`: entradas deduplicadas (equivale a entradaDeLinhaCnefe + dedup por k).
 
-    As funções py_* rodam sobre valores DISTINTOS (tabelas de mapa), não sobre cada linha.
+    A normalização roda sobre valores DISTINTOS (tabelas de mapa), não sobre cada linha.
     """
     con.execute(f"""
       CREATE OR REPLACE TEMP TABLE raw AS
@@ -69,12 +69,14 @@ def criar_tabela_entradas(con: duckdb.DuckDBPyConnection, glob: str) -> None:
       FROM read_parquet('{glob}')
       WHERE lat IS NOT NULL AND lon IS NOT NULL AND coalesce(TRY_CAST(NV_GEO_COORD AS INTEGER), 1) < 5
     """)
-    con.execute("CREATE OR REPLACE TEMP TABLE m_via AS SELECT t, s, py_chave_via(t, s) AS via FROM (SELECT DISTINCT t, s FROM raw)")
-    con.execute("CREATE OR REPLACE TEMP TABLE m_tp  AS SELECT tp0, py_norm_base(tp0) AS tp FROM (SELECT DISTINCT tp0 FROM raw)")
-    con.execute("CREATE OR REPLACE TEMP TABLE m_b   AS SELECT b0, py_norm_base(b0) AS b FROM (SELECT DISTINCT b0 FROM raw)")
-    con.execute("CREATE OR REPLACE TEMP TABLE m_n   AS SELECT num0, py_norm_num(num0) AS n FROM (SELECT DISTINCT num0 FROM raw)")
-    con.execute("CREATE OR REPLACE TEMP TABLE m_q   AS SELECT q0, py_norm_num(q0) AS q FROM (SELECT DISTINCT q0 FROM raw)")
-    con.execute("CREATE OR REPLACE TEMP TABLE m_l   AS SELECT l0, py_norm_num(l0) AS l FROM (SELECT DISTINCT l0 FROM raw)")
+    # Normalização em Python (idêntica à do motor) sobre valores DISTINTOS, via tabelas de mapa.
+    # Evita UDFs do DuckDB, que exigem numpy.
+    _mapa(con, "m_via", ("t", "s"), "via", lambda t, s: chave_via(t, s))
+    _mapa(con, "m_tp", ("tp0",), "tp", normalize_base)
+    _mapa(con, "m_b", ("b0",), "b", normalize_base)
+    _mapa(con, "m_n", ("num0",), "n", lambda x: norm_num(x) or "")
+    _mapa(con, "m_q", ("q0",), "q", lambda x: norm_num(x) or "")
+    _mapa(con, "m_l", ("l0",), "l", lambda x: norm_num(x) or "")
     con.execute(f"""
       CREATE OR REPLACE TEMP TABLE e AS
       SELECT mv.via, mt.tp,
@@ -265,7 +267,6 @@ def main() -> int:
     tmp = out / "_tmp_duckdb"
     tmp.mkdir(exist_ok=True)
     con.execute(f"SET temp_directory='{tmp.as_posix()}'")
-    _registrar_udfs(con)
 
     t_ini = time.monotonic()
     for duf in sorted(pq.glob("uf=*")):

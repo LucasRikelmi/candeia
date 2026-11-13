@@ -76,7 +76,6 @@ def entradas_python(linhas: list[dict], tmp: Path) -> list:
     pq = tmp / "paridade.parquet"
     parquet_de(linhas, pq)
     con = duckdb.connect()
-    gi._registrar_udfs(con)
     gi.criar_tabela_entradas(con, pq.as_posix())
     achados = {round((la - 10) * 1e6): (via, tp, n, q, l, b, c)
                for via, tp, n, q, l, b, c, la in con.execute("SELECT via,tp,n,q,l,b,c,la FROM e").fetchall()}
