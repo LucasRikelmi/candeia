@@ -79,6 +79,8 @@ export const TIPOS_VIA = new Set([
   "sitio", "chacara", "fazenda", "assentamento",
   // Candeia — tipos rurais e locais frequentes no CNEFE (erros do benchmark concentrados neles)
   "linha", "ramal", "vicinal", "beco", "acesso", "travessao", "ladeira", "largo", "caminho",
+  // Candeia — "EDF" é o tipo dos logradouros do DF no CNEFE ("EDF QNN 25 CONJUNTO B")
+  "edf",
 ]);
 
 // Prefixos de rodovia (código da via, não nome) — "BR-153"/"GO-070" devem

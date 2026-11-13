@@ -150,6 +150,15 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
     }
   }
 
+  // Candeia — via estruturada (DF, conjuntos): "QNN 25 CJ B CASA 47" → "qnn 25 conjunto b",
+  // "SQS 308 BL C" → "sqs 308 bloco c", "QUADRA 37" → "quadra 37". Só quando a via extraída não
+  // é uma chave do índice e a estruturada é (o fuzzy acha "sqs 308" para "sqs 308 c 101").
+  if (q.viaEstruturada && viaScore < 1 && ruas[q.viaEstruturada]) {
+    viaKey = q.viaEstruturada;
+    viaScore = 1;
+    q.via = q.viaEstruturada;
+  }
+
   // #16 — Endereço de esquina ("Rua X esq. Rua Y" / "Rua X c/ Rua Y"): a via
   // do cruzamento vem à parte em q.viaCruzamento (extrairEntidades corta
   // antes do "esq"/"c/" pro bloco principal, mas guarda o que vem depois).
@@ -295,9 +304,13 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
   const m = melhor;
   let status, motivo;
 
-  if (exata && ((m.qMatch && m.lMatch) || m.nMatch)) {
+  // Candeia — lote sem quadra identifica o imóvel quando a quadra está no próprio nome da via
+  // (DF: "QNN 25 CONJUNTO B", lote 47) ou a via não tem quadras. Se o mesmo lote se repete longe na
+  // via, o raio do verde (abaixo) rebaixa a cor.
+  const loteSoQuadraNaVia = !m.nMatch && m.lMatch && q.quadra == null && m.c.q == null;
+  if (exata && ((m.qMatch && m.lMatch) || m.nMatch || loteSoQuadraNaVia)) {
     status = "verde";
-    motivo = m.nMatch ? "Via + número exato" : "Via + quadra + lote";
+    motivo = m.nMatch ? "Via + número exato" : m.qMatch ? "Via + quadra + lote" : "Via + lote";
   } else if (exata && m.qMatch) {
     status = "azul";
     motivo = m.lMatch  ? "Via + quadra + lote parcial"
@@ -356,10 +369,11 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
       // Candeia — o mesmo número (ou quadra+lote) pode estar gravado em pontos distantes da mesma
       // chave de via (vias homônimas em localidades diferentes, ruído do CNEFE). O raio do verde é
       // a maior distância entre o ponto escolhido e os outros pontos com a mesma identificação.
-      metodo = m.nMatch ? "numero" : "quadra_lote";
+      metodo = m.nMatch ? "numero" : m.qMatch ? "quadra_lote" : "lote";
       const iguais = poolDesempate.filter((c) => (m.nMatch
         ? c.n != null && c.n === q.numero
-        : c.q != null && c.l != null && c.q === q.quadra && c.l === q.lote));
+        : m.qMatch ? c.q != null && c.l != null && c.q === q.quadra && c.l === q.lote
+        : c.l != null && c.l === q.lote));
       raio = 0;
       for (const c of iguais) raio = Math.max(raio, _haversine(coord.lat, coord.lon, c.la ?? c.lat, c.lo ?? c.lon));
       raio = Math.round(raio);
