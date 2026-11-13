@@ -49,8 +49,11 @@ def _mapa(con, tabela: str, chaves: tuple[str, ...], saida: str, fn) -> None:
     cols = ", ".join(chaves)
     valores = con.execute(f"SELECT DISTINCT {cols} FROM raw").fetchall()
     con.execute(f"CREATE OR REPLACE TEMP TABLE {tabela}(" + ", ".join(f"{c} VARCHAR" for c in chaves) + f", {saida} VARCHAR)")
-    con.executemany(f"INSERT INTO {tabela} VALUES ({', '.join('?' for _ in chaves)}, ?)",
-                    [(*v, fn(*v)) for v in valores])
+    if not valores:
+        return
+    colunas = list(zip(*[(*v, fn(*v)) for v in valores]))
+    con.execute(f"INSERT INTO {tabela} SELECT " + ", ".join("unnest(?::VARCHAR[])" for _ in colunas),
+                [list(c) for c in colunas])
 
 
 def criar_tabela_entradas(con: duckdb.DuckDBPyConnection, glob: str) -> None:
