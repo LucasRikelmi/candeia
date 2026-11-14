@@ -3,46 +3,164 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Candeia — exemplo</title>
+<title>Candeia — demonstração</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  body { font: 16px/1.4 system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 16px; }
-  label { display: block; margin-top: .75rem; font-weight: 600; }
-  input { width: 100%; padding: .4rem; box-sizing: border-box; }
-  button { margin-top: 1rem; padding: .5rem 1rem; }
-  pre { background: #f4f4f4; padding: 1rem; overflow-x: auto; }
+  :root { --borda: #d0d4da; --fundo: #fff; --texto: #1d232b; --suave: #5b6672; --cartao: #f6f7f9; }
+  @media (prefers-color-scheme: dark) {
+    :root { --borda: #39414b; --fundo: #14181d; --texto: #e6e9ed; --suave: #9aa4af; --cartao: #1d232a; }
+  }
+  * { box-sizing: border-box; }
+  body { font: 16px/1.45 system-ui, sans-serif; margin: 0; background: var(--fundo); color: var(--texto); }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 380px 1fr; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  p.sub { margin: 0 0 12px; color: var(--suave); font-size: .9rem; }
+  label { display: block; margin-top: 10px; font-weight: 600; font-size: .9rem; }
+  input { width: 100%; padding: 8px; border: 1px solid var(--borda); border-radius: 6px; background: var(--fundo); color: var(--texto); font: inherit; }
+  .linha { display: grid; grid-template-columns: 1fr 140px; gap: 8px; }
+  button { margin-top: 14px; padding: 10px 16px; border: 0; border-radius: 6px; background: #1f6feb; color: #fff; font: inherit; font-weight: 600; cursor: pointer; width: 100%; }
+  button:disabled { opacity: .6; cursor: wait; }
+  #mapa { min-height: 520px; border-radius: 8px; border: 1px solid var(--borda); }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 12px; margin-top: 14px; }
+  .cor { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .titulo { font-weight: 700; }
+  .det { color: var(--suave); font-size: .85rem; margin-top: 6px; }
+  details { margin-top: 12px; font-size: .85rem; color: var(--suave); }
+  ul#hist { list-style: none; padding: 0; margin: 8px 0 0; font-size: .85rem; }
+  ul#hist li { padding: 6px 0; border-top: 1px solid var(--borda); cursor: pointer; }
+  .erro { color: #d1242f; }
 </style>
 </head>
 <body>
-<h1>Candeia</h1>
-<p>Sirva a raiz do repositório (por exemplo <code>npx http-server .</code>) e abra <code>/exemplo/</code>.
-A URL do índice precisa permitir CORS para esta origem.</p>
-<form id="f">
-  <label>URL do índice <input name="base" required value="https://dados.lucasrikelmi.dev/cnefe2022/v1/"></label>
-  <label>Município (código IBGE) <input name="municipio" required value="5208707"></label>
-  <label>Endereço <input name="endereco" required value="Rua 8, Qd 21 Lt 4"></label>
-  <label>Bairro <input name="bairro"></label>
-  <label>CEP <input name="cep"></label>
-  <button>Geocodificar</button>
-</form>
-<pre id="saida"></pre>
+<main>
+<section>
+  <h1>Candeia</h1>
+  <p class="sub">Geocodificador de endereços brasileiros a partir do CNEFE 2022 (IBGE). Roda no seu navegador: o endereço digitado não sai do seu computador, só o arquivo da cidade é baixado.</p>
+  <form id="f" autocomplete="off">
+    <label for="cidade">Cidade</label>
+    <input id="cidade" name="cidade" list="cidades" required placeholder="Digite o nome, ex.: Goiânia" value="Goiânia - GO">
+    <datalist id="cidades"></datalist>
+    <label for="endereco">Endereço</label>
+    <input id="endereco" name="endereco" required placeholder="Rua 8, Qd 21 Lt 4" value="Rua 8, Qd 21 Lt 4">
+    <div class="linha">
+      <div><label for="bairro">Bairro (opcional)</label><input id="bairro" name="bairro"></div>
+      <div><label for="cep">CEP (opcional)</label><input id="cep" name="cep" inputmode="numeric"></div>
+    </div>
+    <button id="ir">Localizar</button>
+  </form>
+  <div id="res"></div>
+  <details>
+    <summary>Consultas anteriores</summary>
+    <ul id="hist"></ul>
+  </details>
+  <details>
+    <summary>Avançado</summary>
+    <label for="base">URL do índice</label>
+    <input id="base" value="https://dados.lucasrikelmi.dev/cnefe2022/v1/">
+    <p>Também aceita o código IBGE de 7 dígitos no campo Cidade. Dados: IBGE, CNEFE, Censo 2022. Índice: Candeia, CC BY 4.0.</p>
+  </details>
+</section>
+<div id="mapa"></div>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
   import { criarGeocodificador } from "../src/index.js";
+
+  const COR = { verde: "#1a7f37", azul: "#0969da", amarelo: "#bf8700", laranja: "#e16f24", vermelho: "#d1242f" };
+  const STATUS = {
+    verde: "Endereço encontrado",
+    azul: "Encontrado com pequena incerteza",
+    amarelo: "Aproximado",
+    laranja: "Só a região provável",
+    vermelho: "Não encontrado: centro da cidade",
+  };
+  const METODO = {
+    numero: "pelo número de porta", quadra_lote: "pela quadra e lote", lote: "pelo lote", quadra: "pela quadra",
+    interpolacao: "estimado entre números vizinhos", eixo: "ao longo da rua (sem o número exato)",
+    cep: "pelo CEP", cruzamento: "pelo cruzamento de ruas", falha: "rua não encontrada na base",
+  };
+
+  // Municípios pelo nome: API pública de localidades do IBGE. Se ela falhar, o campo aceita o código.
+  const cidades = new Map();
+  fetch("https://servicodados.ibge.gov.br/api/v1/localidades/municipios?view=nivelado")
+    .then((r) => r.json())
+    .then((lista) => {
+      const dl = document.getElementById("cidades");
+      const frag = document.createDocumentFragment();
+      for (const m of lista) {
+        const rotulo = `${m["municipio-nome"]} - ${m["UF-sigla"]}`;
+        cidades.set(rotulo.toLowerCase(), String(m["municipio-id"]));
+        const o = document.createElement("option"); o.value = rotulo; frag.appendChild(o);
+      }
+      dl.appendChild(frag);
+    })
+    .catch(() => { document.getElementById("cidade").placeholder = "Código IBGE de 7 dígitos (lista de nomes indisponível)"; });
+
+  function codigoDaCidade(txt) {
+    const t = txt.trim();
+    if (/^\d{7}$/.test(t)) return t;
+    return cidades.get(t.toLowerCase()) || null;
+  }
+
+  const mapa = L.map("mapa").setView([-15.8, -47.9], 4);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(mapa);
+  const camada = L.layerGroup().addTo(mapa);
+
   let geo = null, baseAtual = null;
-  document.getElementById("f").addEventListener("submit", async (ev) => {
+  const hist = [];
+  const f = document.getElementById("f"), res = document.getElementById("res"), ir = document.getElementById("ir");
+
+  f.addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const d = Object.fromEntries(new FormData(ev.target));
-    if (d.base !== baseAtual) { geo = criarGeocodificador({ base: d.base }); baseAtual = d.base; }
-    const saida = document.getElementById("saida");
-    saida.textContent = "…";
+    const d = Object.fromEntries(new FormData(f));
+    const base = document.getElementById("base").value.trim();
+    const cod = codigoDaCidade(d.cidade);
+    if (!cod) { res.innerHTML = `<div class="cartao erro">Escolha a cidade na lista (ou digite o código IBGE).</div>`; return; }
+    if (base !== baseAtual) { geo = criarGeocodificador({ base }); baseAtual = base; }
+    ir.disabled = true; ir.textContent = "Procurando…";
     const t0 = performance.now();
     try {
-      const r = await geo.geocodificar(d.endereco, { municipio: d.municipio, bairro: d.bairro, cep: d.cep });
-      const { status, metodo, coord, raio, confianca, viaKey, motivo } = r;
-      saida.textContent = JSON.stringify({ status, metodo, coord, raio, confianca, viaKey, motivo,
-        ms: Math.round(performance.now() - t0) }, null, 2);
+      const r = await geo.geocodificar(d.endereco, { municipio: cod, bairro: d.bairro, cep: d.cep });
+      mostrar(r, d, Math.round(performance.now() - t0));
     } catch (e) {
-      saida.textContent = String(e);
+      res.innerHTML = `<div class="cartao erro">${String(e.message || e)}</div>`;
+    } finally {
+      ir.disabled = false; ir.textContent = "Localizar";
     }
+  });
+
+  function mostrar(r, d, ms) {
+    camada.clearLayers();
+    const cor = COR[r.status] || "#888";
+    const pct = (x) => (x == null ? "—" : `${Math.round(100 * x)}%`);
+    const raio = r.raio == null ? "não estimado" : r.raio < 1000 ? `${Math.round(r.raio)} m` : `${(r.raio / 1000).toFixed(1)} km`;
+    res.innerHTML = `<div class="cartao">
+      <div class="titulo"><span class="cor" style="background:${cor}"></span>${STATUS[r.status] || r.status}</div>
+      <div>Localizado ${METODO[r.metodo] || r.metodo || ""}. Margem: ${raio}.</div>
+      <div class="det">Em testes com respostas iguais a esta, ${pct(r.confianca?.ate100m)} ficaram a até 100 m do ponto certo
+        e ${pct(r.confianca?.acima1km)} a mais de 1 km.</div>
+      <div class="det">Rua reconhecida: ${r.viaKey ?? "nenhuma"}${r.viaScore != null && r.viaScore < 1 ? ` (semelhança ${Math.round(100 * r.viaScore)}%)` : ""} · ${r.coord ? r.coord.lat.toFixed(6) + ", " + r.coord.lon.toFixed(6) : "sem coordenada"} · ${ms} ms</div>
+      ${r.coord ? `<div class="det"><a href="https://www.google.com/maps?q=${r.coord.lat},${r.coord.lon}" target="_blank" rel="noopener">Abrir no Google Maps</a></div>` : ""}
+    </div>`;
+    if (r.coord) {
+      const p = [r.coord.lat, r.coord.lon];
+      L.circleMarker(p, { radius: 8, color: "#fff", weight: 2, fillColor: cor, fillOpacity: 1 }).addTo(camada);
+      if (r.raio) L.circle(p, { radius: Math.max(r.raio, 15), color: cor, weight: 1, fillOpacity: 0.12 }).addTo(camada);
+      mapa.setView(p, r.raio ? Math.max(12, Math.min(18, Math.round(17 - Math.log2(Math.max(r.raio, 20) / 40)))) : 17);
+    }
+    hist.unshift({ d, r });
+    document.getElementById("hist").innerHTML = hist.slice(0, 20).map((h, i) =>
+      `<li data-i="${i}"><span class="cor" style="background:${COR[h.r.status] || "#888"}"></span>${esc(h.d.endereco)} · ${esc(h.d.cidade)}</li>`).join("");
+  }
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  document.getElementById("hist").addEventListener("click", (ev) => {
+    const li = ev.target.closest("li"); if (!li) return;
+    const { d } = hist[Number(li.dataset.i)];
+    for (const k of ["cidade", "endereco", "bairro", "cep"]) document.getElementById(k).value = d[k] || "";
+    f.requestSubmit();
   });
 </script>
 </body>
