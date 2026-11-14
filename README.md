@@ -2,7 +2,7 @@
 
 Geocodificação de endereços brasileiros que roda no seu próprio código, sem servidor, sem chave de API e sem custo por consulta.
 
-> **Status: v1.0.0.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). O pacote não está no npm: instale pelo GitHub (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Um benchmark de regressão roda no CI a cada PR.
+> **Status: v1.0.1.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). O pacote não está no npm: instale pelo GitHub (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Um benchmark de regressão roda no CI a cada PR.
 
 ## O problema
 
@@ -27,13 +27,13 @@ O IBGE publica o CNEFE, o cadastro de endereços usado no Censo, com coordenadas
 Node 22 ou mais (sem dependências):
 
 ```sh
-npm install github:LucasRikelmi/candeia#v1.0.0
+npm install github:LucasRikelmi/candeia#v1.0.1
 ```
 
 No navegador, direto de um CDN que serve o GitHub:
 
 ```js
-import { criarGeocodificador } from "https://cdn.jsdelivr.net/gh/LucasRikelmi/candeia@v1.0.0/src/index.js";
+import { criarGeocodificador } from "https://cdn.jsdelivr.net/gh/LucasRikelmi/candeia@v1.0.1/src/index.js";
 ```
 
 ```js
