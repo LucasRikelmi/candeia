@@ -99,8 +99,7 @@ Comparação nas mesmas 66 mil consultas do benchmark (geocodebr 0.7.0, entrada 
 | sem número | 34,0% | 30,1% | 22,9% | 23,4% |
 | sem bairro e CEP | 70,9% | 67,8% | 13,3% | 16,2% |
 | erro de digitação no nome | 72,7% | 74,1% | 7,8% | 7,2% |
-
-| erro dentro da margem declarada (`raio` × `desvio_metros`, limpo) | 91,7% | 93,7% | | |
+| erro dentro da margem declarada (`raio` × `desvio_metros`, limpo) | 91,7% | 93,7% | — | — |
 
 Leitura:
 
