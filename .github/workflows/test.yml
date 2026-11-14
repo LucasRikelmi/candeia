@@ -27,3 +27,12 @@ jobs:
           python-version: "3.12"
       - run: pip install -r pipeline/requirements.txt
       - run: python -m unittest discover -s pipeline -p 'test_*.py' -v
+  benchmark:
+    # Regressão de precisão sobre o índice publicado (dados.lucasrikelmi.dev). Baixa ~12 MB.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node bench/ci.mjs

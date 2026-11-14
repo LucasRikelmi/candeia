@@ -12,7 +12,7 @@
 // base, então os números são otimistas por construção (ver README).
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
-import { createHash } from "node:crypto";
+import { hash, comErro, haversine, resumir } from "./comum.mjs";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -54,28 +54,12 @@ const ABREV_TITULO = { DOUTOR: "Dr.", DOUTORA: "Dra.", PROFESSOR: "Prof.", PROFE
   CORONEL: "Cel.", GOVERNADOR: "Gov.", PRESIDENTE: "Pres.", SENADOR: "Sen.", DEPUTADO: "Dep.",
   ENGENHEIRO: "Eng.", PADRE: "Pe.", MARECHAL: "Mal.", GENERAL: "Gal.", CAPITAO: "Cap." };
 
-const hash = (s) => parseInt(createHash("sha256").update(s).digest("hex").slice(0, 8), 16);
 const temNumero = (r) => r.num && r.num !== "0" && r.modificador !== "SN";
 
 function complemento(r) {
   if (temNumero(r)) return `, ${r.num}`;
   const ql = [r.quadra && `Qd ${r.quadra}`, r.lote && `Lt ${r.lote}`].filter(Boolean).join(" ");
   return ql ? `, ${ql}` : "";
-}
-
-// Erro de digitação determinístico: troca, apaga ou duplica uma letra da maior palavra do nome.
-export function comErro(nome, semente) {
-  const palavras = nome.split(" ");
-  let iw = 0;
-  palavras.forEach((p, i) => { if (/^[A-Z]{4,}$/.test(p) && p.length > palavras[iw].length) iw = i; });
-  const p = palavras[iw];
-  if (!/^[A-Z]{4,}$/.test(p)) return null;
-  const h = hash(semente), pos = 1 + (h % (p.length - 2)), op = (h >>> 8) % 3;
-  const letra = "AEIOURSTNL"[(h >>> 12) % 10];
-  palavras[iw] = op === 0 ? p.slice(0, pos) + letra + p.slice(pos + 1)
-    : op === 1 ? p.slice(0, pos) + p.slice(pos + 1)
-    : p.slice(0, pos) + p[pos] + p.slice(pos);
-  return palavras.join(" ");
 }
 
 export function variantes(r) {
@@ -92,35 +76,6 @@ export function variantes(r) {
   return out;
 }
 
-// ---------------------------------------------------------------- métricas
-function haversine(la1, lo1, la2, lo2) {
-  const R = 6371000, r = Math.PI / 180;
-  const a = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
-const quantil = (xs, q) => (xs.length ? xs[Math.min(xs.length - 1, Math.floor(q * xs.length))] : null);
-
-export function resumir(res) {
-  const n = res.length, d = res.filter((x) => x.dist != null).map((x) => x.dist).sort((a, b) => a - b);
-  const pct = (f) => (n ? +(100 * res.filter(f).length / n).toFixed(1) : null);
-  return {
-    n,
-    respondeu: pct((x) => x.dist != null && x.status !== "vermelho"),
-    mediana_m: quantil(d, 0.5) && Math.round(quantil(d, 0.5)),
-    p90_m: quantil(d, 0.9) && Math.round(quantil(d, 0.9)),
-    ate_25m: pct((x) => x.dist != null && x.dist <= 25),
-    ate_50m: pct((x) => x.dist != null && x.dist <= 50),
-    ate_100m: pct((x) => x.dist != null && x.dist <= 100),
-    ate_200m: pct((x) => x.dist != null && x.dist <= 200),
-    acima_1km: pct((x) => x.dist == null || x.dist > 1000),
-    // raio de incerteza devolvido pelo motor (quando devolve): % de erros dentro dele e raio mediano
-    com_raio: pct((x) => x.raio != null),
-    erro_dentro_do_raio: (() => { const r = res.filter((x) => x.raio != null && x.dist != null);
-      return r.length ? +(100 * r.filter((x) => x.dist <= Math.max(x.raio, 25)).length / r.length).toFixed(1) : null; })(),
-    raio_mediano_m: (() => { const r = res.filter((x) => x.raio != null).map((x) => x.raio).sort((a, b) => a - b);
-      return r.length ? quantil(r, 0.5) : null; })(),
-  };
-}
 function agrupar(res, chave) {
   const g = {};
   for (const x of res) (g[chave(x)] ??= []).push(x);
