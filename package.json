@@ -1,13 +1,19 @@
 {
   "name": "candeia",
-  "version": "1.0.1",
-  "private": true,
-  "description": "Geocodificação de endereços brasileiros a partir do CNEFE (IBGE), sem servidor.",
+  "version": "1.1.0",
+  "description": "Geocodificação de endereços brasileiros a partir do CNEFE (IBGE), sem servidor e sem chave de API.",
+  "keywords": ["geocodificacao", "geocoding", "endereco", "cnefe", "ibge", "brasil", "quadra", "lote"],
   "type": "module",
   "exports": "./src/index.js",
+  "files": ["src/", "DADOS.md"],
   "engines": { "node": ">=22" },
   "scripts": {
     "test": "node --test \"test/**/*.test.js\""
   },
-  "license": "MIT"
+  "repository": { "type": "git", "url": "git+https://github.com/LucasRikelmi/candeia.git" },
+  "homepage": "https://github.com/LucasRikelmi/candeia#readme",
+  "bugs": "https://github.com/LucasRikelmi/candeia/issues",
+  "author": "Lucas Rikelmi",
+  "license": "MIT",
+  "publishConfig": { "access": "public", "provenance": true }
 }
