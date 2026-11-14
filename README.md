@@ -100,7 +100,22 @@ Comparação nas mesmas 66 mil consultas do benchmark (geocodebr 0.7.0, entrada 
 | sem bairro e CEP | 70,9% | 67,8% | 13,3% | 16,2% |
 | erro de digitação no nome | 72,7% | 74,1% | 7,8% | 7,2% |
 
-Com número de porta os dois empatam. O Candeia ganha onde o endereço é quadra e lote (o geocodebr não tem campo para isso) e quando faltam bairro e CEP. O geocodebr ganha com erro de digitação: ele usa o número de porta mesmo quando o nome da rua só casou por semelhança, e o Candeia ainda não.
+| erro dentro da margem declarada (`raio` × `desvio_metros`, limpo) | 91,7% | 93,7% | | |
+
+Leitura:
+
+- Com número de porta os dois empatam: a diferença (0,3 ponto) está dentro do ruído de uma amostra desse tamanho.
+- A vantagem do Candeia em quadra e lote vem de o geocodebr não ter campo para quadra e lote: ele recebeu só o logradouro. É uma diferença de escopo, não de qualidade do casamento, e são só 627 consultas.
+- Sem bairro e CEP o Candeia erra menos acima de 1 km (13,3% contra 16,2%).
+- O geocodebr ganha com erro de digitação. Ele usa o número de porta mesmo quando o nome da rua só casou por semelhança, e o Candeia não usa.
+- O geocodebr também é mais honesto sobre a própria margem: o erro fica dentro do `desvio_metros` que ele declara em 93,7% dos casos, contra 91,7% do `raio` do Candeia.
+
+Limites desta comparação:
+
+- O gabarito sai do CNEFE, a mesma base dos dois motores. Isso favorece quem reproduz o CNEFE com fidelidade e não diz nada sobre endereço fora dele.
+- As variantes com erro foram geradas pelo benchmark do Candeia, que também escolheu os grupos.
+- O geocodebr recebeu os campos já separados. Na prática, quem usa o geocodebr precisa separar o endereço antes, e o Candeia recebe o texto livre: aqui o geocodebr teve essa ajuda.
+- Não foram medidos tempo, memória nem tamanho de download.
 
 ## Roadmap
 
