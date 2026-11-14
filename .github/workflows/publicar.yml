@@ -23,6 +23,14 @@ jobs:
         run: |
           v="v$(node -p "require('./package.json').version")"
           test "$v" = "${{ github.event.release.tag_name }}" || { echo "tag ${{ github.event.release.tag_name }} ≠ package.json $v"; exit 1; }
-      - run: npm test
-      - run: node bench/ci.mjs
-      - run: npm publish
+      - name: Versão já publicada?
+        id: ja
+        run: |
+          v="$(node -p "require('./package.json').version")"
+          if npm view "candeia@$v" version >/dev/null 2>&1; then echo "candeia@$v já está no npm; nada a publicar"; echo "pular=1" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.ja.outputs.pular != '1'
+        run: npm test
+      - if: steps.ja.outputs.pular != '1'
+        run: node bench/ci.mjs
+      - if: steps.ja.outputs.pular != '1'
+        run: npm publish
