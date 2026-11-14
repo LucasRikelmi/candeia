@@ -12,6 +12,8 @@ export const LOTE_ADJ   = 2;    // |diff| de lote para "ao lado"
 // Candeia — eixo de rua com raio de incerteza acima disto não é amarelo: no benchmark, raio > 500 m
 // concentra quase todo erro > 1 km (50% deles contra 1% com raio <= 500 m, endereços sem número).
 export const RAIO_AMARELO_MAX = 500;
+// Candeia — via achada por semelhança usa o ponto do número de porta, se ele existir nela: com nota
+// >= GATE_FORTE sempre; entre GATE_FUZZY e GATE_FORTE só se bairro ou CEP também conferem.
 // Candeia — verde exige que o número (ou quadra+lote) não se repita longe na mesma via.
 export const RAIO_VERDE_MAX = 100;
 export const RAIO_VERDE_LARANJA = 1000;
@@ -401,6 +403,24 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
       const mesmoCep = candidatos.filter((c) => c.c === cepNorm);
       if (mesmoCep.length) pool = mesmoCep;
     }
+    // Candeia — a via casou só por semelhança (digitação: "Avenida Tpi" → "tupi"), mas o número de
+    // porta (ou quadra e lote) existe nela: usa o ponto do número em vez do eixo. A cor continua a
+    // da via (amarelo/laranja), porque o número pode coincidir numa rua errada.
+    // Medido (rodada 9): digitação 71,4 → 73,7% até 100 m; sem exigir bairro/CEP abaixo de
+    // GATE_FORTE, o cenário B piorava 0,1 ponto acima de 1 km.
+    let porNumero = false;
+    if (!exata && !cruzamentoUsado && (m.nMatch || (m.qMatch && m.lMatch)) &&
+        (forte || m.bMatch || m.cMatch)) {
+      coord = { lat: m.c.la ?? m.c.lat, lon: m.c.lo ?? m.c.lon };
+      const iguais = poolDesempate.filter((c) => (m.nMatch ? c.n != null && c.n === q.numero
+        : c.q != null && c.l != null && c.q === q.quadra && c.l === q.lote));
+      raio = 0;
+      for (const c of iguais) raio = Math.max(raio, _haversine(coord.lat, coord.lon, c.la ?? c.lat, c.lo ?? c.lon));
+      raio = Math.round(raio);
+      metodo = m.nMatch ? "numero" : "quadra_lote";
+      motivo += " [número confere numa via achada por semelhança]";
+      porNumero = true;
+    }
     // Candeia — número que não está no índice: interpola entre os vizinhos do mesmo lado.
     let interp = null;
     // Só com a via casada exata: em via achada por semelhança (digitação, nome parecido) a
@@ -413,7 +433,9 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
       }
       interp = interpolarNumero(poolInterp, q.numero);
     }
-    if (interp) {
+    if (porNumero) {
+      // coordenada já definida pelo ponto do número
+    } else if (interp) {
       ({ coord, raio } = interp);
       metodo = "interpolacao";
       motivo = `Número interpolado entre ${interp.vizinhos[0]} e ${interp.vizinhos[1]}`;

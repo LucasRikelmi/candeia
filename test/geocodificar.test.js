@@ -201,3 +201,12 @@ test("sem vizinho dos dois lados, ou vizinhos a mais de 1 km, não interpola", (
   assert.notEqual(g("Rua Y, 150").metodo, "interpolacao"); // 100 e 200 a ~1,1 km
   assert.equal(g("Rua Y, 250").metodo, "interpolacao");
 });
+
+test("rua achada por semelhança usa o ponto do número, sem virar verde", () => {
+  const { geo } = cidadeSintetica();
+  const certo = geo("Rua Tocantins, 20");
+  const r = geo("Rua Tukantins, 20"); // nota ~0,87: abaixo de "mesma rua", acima de "rua encontrada"
+  assert.equal(r.status, "amarelo");
+  assert.equal(r.metodo, "numero");
+  assert.deepEqual(r.coord, certo.coord);
+});
