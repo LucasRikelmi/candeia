@@ -3,10 +3,10 @@
   "grupos": {
     "A digitacao": {
       "n": 1206,
-      "ate_100m": 78.3,
+      "ate_100m": 80.4,
       "acima_1km": 6.7,
       "mediana_m": 0,
-      "erro_dentro_do_raio": 91.6
+      "erro_dentro_do_raio": 92.6
     },
     "A limpa": {
       "n": 1320,
@@ -41,7 +41,7 @@
       "ate_100m": 68.4,
       "acima_1km": 10.6,
       "mediana_m": 22,
-      "erro_dentro_do_raio": 76.8
+      "erro_dentro_do_raio": 76.7
     }
   }
 }
