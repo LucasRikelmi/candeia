@@ -1,6 +1,6 @@
 // Candeia — carregamento do índice publicado (pipeline/gerar_indice.py) sob demanda.
 //
-//   const geo = criarGeocodificador({ base: "https://dados.exemplo.dev/cnefe2022/" });
+//   const geo = criarGeocodificador({ base: "https://dados.lucasrikelmi.dev/cnefe2022/v1/" });
 //   const r = await geo.geocodificar("Rua 8, Qd 21 Lt 4", { municipio: "5208707", bairro, cep });
 //
 // Município pequeno: um arquivo com o dicionário inteiro. Município grande (fatiado): baixa o
