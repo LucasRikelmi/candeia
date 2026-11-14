@@ -1,0 +1,47 @@
+{
+ "indice": "cnefe2022/v1",
+ "grupos": {
+  "A digitacao": {
+   "n": 1206,
+   "ate_100m": 77.2,
+   "acima_1km": 9.3,
+   "mediana_m": 0,
+   "erro_dentro_do_raio": 89.8
+  },
+  "A limpa": {
+   "n": 1320,
+   "ate_100m": 79.2,
+   "acima_1km": 9,
+   "mediana_m": 0,
+   "erro_dentro_do_raio": 91.7
+  },
+  "A numero_omitido": {
+   "n": 908,
+   "ate_100m": 51.9,
+   "acima_1km": 4.8,
+   "mediana_m": 94,
+   "erro_dentro_do_raio": 78.8
+  },
+  "A sem_bairro_cep": {
+   "n": 1320,
+   "ate_100m": 75.2,
+   "acima_1km": 13.4,
+   "mediana_m": 0,
+   "erro_dentro_do_raio": 90.7
+  },
+  "A sem_virgula": {
+   "n": 908,
+   "ate_100m": 95.8,
+   "acima_1km": 2.3,
+   "mediana_m": 0,
+   "erro_dentro_do_raio": 97.9
+  },
+  "B limpa": {
+   "n": 1320,
+   "ate_100m": 67.3,
+   "acima_1km": 13.3,
+   "mediana_m": 23,
+   "erro_dentro_do_raio": 76.1
+  }
+ }
+}
