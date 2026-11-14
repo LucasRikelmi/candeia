@@ -3,45 +3,45 @@
  "grupos": {
   "A digitacao": {
    "n": 1206,
-   "ate_100m": 77.2,
-   "acima_1km": 9.3,
+   "ate_100m": 78.4,
+   "acima_1km": 7.5,
    "mediana_m": 0,
-   "erro_dentro_do_raio": 89.8
+   "erro_dentro_do_raio": 90.8
   },
   "A limpa": {
    "n": 1320,
-   "ate_100m": 79.2,
-   "acima_1km": 9,
+   "ate_100m": 80.8,
+   "acima_1km": 6.7,
    "mediana_m": 0,
-   "erro_dentro_do_raio": 91.7
+   "erro_dentro_do_raio": 92.5
   },
   "A numero_omitido": {
    "n": 908,
-   "ate_100m": 51.9,
-   "acima_1km": 4.8,
-   "mediana_m": 94,
-   "erro_dentro_do_raio": 78.8
+   "ate_100m": 52.3,
+   "acima_1km": 3.7,
+   "mediana_m": 92,
+   "erro_dentro_do_raio": 79.3
   },
   "A sem_bairro_cep": {
    "n": 1320,
-   "ate_100m": 75.2,
-   "acima_1km": 13.4,
+   "ate_100m": 76.5,
+   "acima_1km": 11.2,
    "mediana_m": 0,
-   "erro_dentro_do_raio": 90.7
+   "erro_dentro_do_raio": 91.6
   },
   "A sem_virgula": {
    "n": 908,
-   "ate_100m": 95.8,
-   "acima_1km": 2.3,
+   "ate_100m": 97.2,
+   "acima_1km": 0.9,
    "mediana_m": 0,
-   "erro_dentro_do_raio": 97.9
+   "erro_dentro_do_raio": 98.3
   },
   "B limpa": {
    "n": 1320,
-   "ate_100m": 67.3,
-   "acima_1km": 13.3,
-   "mediana_m": 23,
-   "erro_dentro_do_raio": 76.1
+   "ate_100m": 68.2,
+   "acima_1km": 11.2,
+   "mediana_m": 22,
+   "erro_dentro_do_raio": 76.7
   }
  }
 }

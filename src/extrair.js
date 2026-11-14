@@ -88,7 +88,13 @@ export function extrairEntidades(enderecoCru) {
   // exige espaço depois (é comum "C/RUA X" colado, sem
   // espaço após a barra) — "esq"/"esquina" continuam exigindo os dois
   // lados por extenso, pra não colidir com outra palavra no meio do nome.
-  const partesCruzamento = base.split(/\s+(?:c\/\s*|esq\s+|esquina\s+)/);
+  let partesCruzamento = base.split(/\s+(?:c\/\s*|esq\s+|esquina\s+)/);
+  // Candeia — "Estrada Esquina Borges" (RS): "esquina" logo depois do tipo é parte do nome
+  // (localidade), não marcador de cruzamento. Sem via antes do marcador, não há cruzamento.
+  const antes = partesCruzamento[0].trim().split(/\s+/).filter(Boolean);
+  if (partesCruzamento.length > 1 && antes.length <= 1 && (!antes.length || TIPOS_VIA.has(antes[0]))) {
+    partesCruzamento = [base];
+  }
   base = partesCruzamento[0];
   let blocoCruzamento = partesCruzamento[1] || null;
 
@@ -154,8 +160,10 @@ export function extrairEntidades(enderecoCru) {
     if (alt.tokens.length) { tipo = alt.tipo; tokens = alt.tokens; }
   }
 
+  // Candeia — "esquina" logo depois do tipo é localidade ("Estrada Esquina Borges"), não ruído.
+  const nomeComEsquina = tipo != null && tokens[0] === "esquina";
   const via0 = tokens
-    .filter((tok) => !RUIDO_COMPLEMENTO.has(tok) && !RE_COMPL_GLUED.test(tok))
+    .filter((tok) => (nomeComEsquina && tok === "esquina") || (!RUIDO_COMPLEMENTO.has(tok) && !RE_COMPL_GLUED.test(tok)))
     .join(" ")
     .trim();
   const via = extensoParaNumeral(via0);
