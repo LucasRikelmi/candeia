@@ -80,7 +80,7 @@ Cada UF escreve endereço de um jeito. Na amostra inicial, o DF tem 96% dos regi
 
 ## Qualidade e honestidade sobre os números
 
-- Um score de similaridade não é probabilidade. A `confianca` devolvida é a fração medida no benchmark para a mesma cor e faixa de raio, validada fora da amostra (metade dos municípios ajusta, a outra mede). Ainda não é separada por UF.
+- Um score de similaridade não é probabilidade. A `confianca` devolvida é a fração medida no benchmark para a mesma cor e faixa de raio, validada fora da amostra (metade dos municípios ajusta, a outra mede). Ela não é separada por UF de propósito: a tabela por UF, mesmo encolhida para a nacional, errou mais nos municípios que ficaram fora do ajuste (Brier 0,0959 contra 0,0917 da nacional). A diferença entre municípios da mesma UF é maior que a diferença entre UFs, e a cor e o raio já carregam o que importa.
 - O benchmark sintético sorteia endereços do próprio CNEFE e os suja (abreviações, erros de digitação, campos faltando). Ele é otimista por construção, porque o gabarito vem da mesma base. Ainda não há validação com pontos conferidos em campo.
 - O CNEFE é de 2022. Endereços novos não existem nele.
 - Coordenadas aproximadas servem para mapa, roteirização grosseira, estatística e triagem. Não servem para localizar um portão específico quando o nível devolvido for `logradouro` ou menor.
@@ -100,10 +100,10 @@ O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE
 - [x] Índice publicado e loader sob demanda
 - [x] Benchmark de regressão no CI
 - [ ] Validação com pontos conferidos em campo
-- [ ] Calibração de confiança por UF
-- [ ] Comparação com o geocodebr nos mesmos endereços
+- [x] Calibração de confiança por UF: medida e descartada, piora fora da amostra (ver abaixo)
+- [ ] Comparação com o geocodebr nos mesmos endereços (scripts prontos em `bench/geocodebr/`)
 - [ ] Pacote no npm
-- [ ] Guia de contribuição com casos de teste por UF
+- [x] Guia de contribuição com casos de teste por UF ([CONTRIBUTING.md](CONTRIBUTING.md))
 
 ## Desenvolvimento
 
@@ -114,7 +114,7 @@ node bench/ci.mjs    # benchmark de regressão sobre o índice publicado (~12 MB
 
 ## Contribuindo
 
-A ideia é que contribuir seja barato: regras de abreviação e tipos de via por UF ficam em casos de teste legíveis ("entrada, resultado esperado"). O CI roda um benchmark de regressão em todo pull request e falha se a acurácia cair mais de 1 ponto em qualquer grupo (`bench/ci.mjs`). Mudança intencional atualiza a referência com `node bench/ci.mjs --atualizar`.
+A ideia é que contribuir seja barato: o jeito de escrever endereço de cada UF fica em casos de teste legíveis (`test/casos/<UF>.json`, "entrada, resultado esperado"), sem precisar saber JavaScript. Ver [CONTRIBUTING.md](CONTRIBUTING.md). O CI roda um benchmark de regressão em todo pull request e falha se a acurácia cair mais de 1 ponto em qualquer grupo (`bench/ci.mjs`). Mudança intencional atualiza a referência com `node bench/ci.mjs --atualizar`.
 
 ## Origem
 

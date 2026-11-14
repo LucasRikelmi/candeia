@@ -12,7 +12,7 @@
 // base, então os números são otimistas por construção (ver README).
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
-import { hash, comErro, haversine, resumir } from "./comum.mjs";
+import { hash, haversine, resumir, variantes, temNumero, complemento, lerCsv } from "./comum.mjs";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -27,54 +27,6 @@ if (!args.dados || !args.saida || !args.motor.length) {
   process.exit(2);
 }
 const LIMITE = args.limite ? Number(args.limite) : Infinity;
-
-// ---------------------------------------------------------------- CSV (RFC 4180)
-export function lerCsv(texto) {
-  const linhas = [];
-  let campo = "", linha = [], aspas = false;
-  for (let i = 0; i < texto.length; i++) {
-    const ch = texto[i];
-    if (aspas) {
-      if (ch === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else aspas = false; }
-      else campo += ch;
-    } else if (ch === '"') aspas = true;
-    else if (ch === ",") { linha.push(campo); campo = ""; }
-    else if (ch === "\n") { linha.push(campo); linhas.push(linha); linha = []; campo = ""; }
-    else if (ch !== "\r") campo += ch;
-  }
-  if (campo || linha.length) { linha.push(campo); linhas.push(linha); }
-  const [cab, ...corpo] = linhas;
-  return corpo.map((l) => Object.fromEntries(cab.map((c, i) => [c, l[i] ?? ""])));
-}
-
-// ---------------------------------------------------------------- variantes de consulta
-const ABREV_TIPO = { RUA: "R.", AVENIDA: "Av.", TRAVESSA: "Tv.", ALAMEDA: "Al.", PRACA: "Pça.",
-  RODOVIA: "Rod.", ESTRADA: "Est.", QUADRA: "Qd." };
-const ABREV_TITULO = { DOUTOR: "Dr.", DOUTORA: "Dra.", PROFESSOR: "Prof.", PROFESSORA: "Profa.",
-  CORONEL: "Cel.", GOVERNADOR: "Gov.", PRESIDENTE: "Pres.", SENADOR: "Sen.", DEPUTADO: "Dep.",
-  ENGENHEIRO: "Eng.", PADRE: "Pe.", MARECHAL: "Mal.", GENERAL: "Gal.", CAPITAO: "Cap." };
-
-const temNumero = (r) => r.num && r.num !== "0" && r.modificador !== "SN";
-
-function complemento(r) {
-  if (temNumero(r)) return `, ${r.num}`;
-  const ql = [r.quadra && `Qd ${r.quadra}`, r.lote && `Lt ${r.lote}`].filter(Boolean).join(" ");
-  return ql ? `, ${ql}` : "";
-}
-
-export function variantes(r) {
-  const via = [r.tipo, r.titulo, r.nome].filter(Boolean).join(" ");
-  const out = { limpa: { end: via + complemento(r), bairro: r.bairro, cep: r.cep } };
-  if (temNumero(r)) out.sem_virgula = { end: `${via} ${r.num}`, bairro: r.bairro, cep: r.cep };
-  // Quem digita costuma omitir o número; no CNEFE "sem número" é quase sempre rural (SN), outra população.
-  if (temNumero(r)) out.numero_omitido = { end: via, bairro: r.bairro, cep: r.cep };
-  const ab = [ABREV_TIPO[r.tipo] || r.tipo, ABREV_TITULO[r.titulo] || r.titulo, r.nome].filter(Boolean).join(" ");
-  if (ab !== via) out.abreviada = { end: ab + complemento(r), bairro: r.bairro, cep: r.cep };
-  const err = comErro(r.nome, r.id);
-  if (err) out.digitacao = { end: [r.tipo, r.titulo, err].filter(Boolean).join(" ") + complemento(r), bairro: r.bairro, cep: r.cep };
-  out.sem_bairro_cep = { end: out.limpa.end, bairro: "", cep: "" };
-  return out;
-}
 
 function agrupar(res, chave) {
   const g = {};

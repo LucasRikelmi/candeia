@@ -1,0 +1,10 @@
+{
+  "uf": "DF",
+  "notas": "Endereço estruturado: a quadra, o conjunto e o bloco fazem parte do nome do logradouro no CNEFE.",
+  "casos": [
+    { "entrada": "QNN 25 Conjunto B Lote 47", "esperado": { "via": "qnn 25 conjunto b", "lote": "47", "quadra": null } },
+    { "entrada": "SQN 308 Bloco A", "esperado": { "via": "sqn 308 a" } },
+    { "entrada": "Quadra 104 Conjunto 3 Casa 10", "esperado": { "quadra": "104", "lote": "10" },
+      "todo": "via sai como \"3 10\"; o nome no CNEFE para esse padrão ainda não foi conferido" }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "uf": "AC",
+  "notas": "Vias rurais (ramal, igarapé) e km no lugar do número.",
+  "casos": [
+    { "entrada": "Ramal do Mutum, km 5", "esperado": { "tipo": "ramal", "via": "do mutum", "km": "5" } },
+    { "entrada": "Igarapé São Francisco", "esperado": { "tipo": "igarape", "via": "sao francisco", "numero": null } },
+    { "entrada": "BR-364, km 8", "esperado": { "via": "364", "km": "8" } }
+  ]
+}
