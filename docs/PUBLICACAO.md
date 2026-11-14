@@ -55,3 +55,11 @@ O ponto que só o verificador confirma: o loader precisa receber os bytes do `.g
 ## Alternativa: R2
 
 `pipeline/publicar_r2.sh` continua no repositório para quem preferir o R2 (bucket + rclone). Nesse caso, configure no domínio uma Cache Rule para o subdomínio (cache sempre, TTL longo, **query string ignorada** na chave de cache), ligue o Tiered Cache e uma regra de rate limiting. Sem a regra de cache, o custo de um abuso não tem limite.
+
+## Clientes fora do navegador
+
+A Cloudflare barra o User-Agent padrão do Python (`Python-urllib`) com 403 / `error code: 1010` (assinatura de navegador banida). Navegadores e `curl` passam. Qualquer script ou servidor que leia o índice deve mandar um User-Agent próprio, como faz o `verificar_publicacao.py`.
+
+## Envio que cai no meio
+
+O wrangler só registra os arquivos de um deploy concluído. Se o envio cair no meio, a próxima tentativa recomeça do zero. Se cair repetidamente, publique em etapas: `UFS="AC AL AM ..." ./publicar_pages.sh ...` faz um deploy parcial (sem manifesto), e o deploy completo seguinte pula o que já subiu.
