@@ -2,7 +2,7 @@
 
 Geocodificação de endereços brasileiros que roda no seu próprio código, sem servidor, sem chave de API e sem custo por consulta.
 
-> **Status: v1.1.0.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). Instalação pelo npm (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Um benchmark de regressão roda no CI a cada PR.
+> **Status: v1.1.1.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). Instalação pelo npm (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Um benchmark de regressão roda no CI a cada PR.
 
 ## O problema
 
@@ -33,7 +33,7 @@ npm install candeia
 No navegador, direto de um CDN:
 
 ```js
-import { criarGeocodificador } from "https://cdn.jsdelivr.net/npm/candeia@1.1.0/src/index.js";
+import { criarGeocodificador } from "https://cdn.jsdelivr.net/npm/candeia@1.1.1/src/index.js";
 ```
 
 ```js

@@ -1,6 +1,6 @@
 {
   "name": "candeia",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Geocodificação de endereços brasileiros a partir do CNEFE (IBGE), sem servidor e sem chave de API.",
   "keywords": ["geocodificacao", "geocoding", "endereco", "cnefe", "ibge", "brasil", "quadra", "lote"],
   "type": "module",
