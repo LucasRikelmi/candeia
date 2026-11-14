@@ -80,14 +80,41 @@ Cada UF escreve endereço de um jeito. Na amostra inicial, o DF tem 96% dos regi
 
 ## Qualidade e honestidade sobre os números
 
-- Um score de similaridade não é probabilidade. A `confianca` devolvida é a fração medida no benchmark para a mesma cor e faixa de raio, validada fora da amostra (metade dos municípios ajusta, a outra mede). Ainda não é separada por UF.
+- Um score de similaridade não é probabilidade. A `confianca` devolvida é a fração medida no benchmark para a mesma cor e faixa de raio, validada fora da amostra (metade dos municípios ajusta, a outra mede). Ela não é separada por UF de propósito: a tabela por UF, mesmo encolhida para a nacional, errou mais nos municípios que ficaram fora do ajuste (Brier 0,0959 contra 0,0917 da nacional). A diferença entre municípios da mesma UF é maior que a diferença entre UFs, e a cor e o raio já carregam o que importa.
 - O benchmark sintético sorteia endereços do próprio CNEFE e os suja (abreviações, erros de digitação, campos faltando). Ele é otimista por construção, porque o gabarito vem da mesma base. Ainda não há validação com pontos conferidos em campo.
 - O CNEFE é de 2022. Endereços novos não existem nele.
 - Coordenadas aproximadas servem para mapa, roteirização grosseira, estatística e triagem. Não servem para localizar um portão específico quando o nível devolvido for `logradouro` ou menor.
 
 ## Relação com outros projetos
 
-O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE, funciona offline e retorna nível de precisão e desvio em metros. É mais maduro e cobre geocodificação reversa e busca por CEP. A proposta do Candeia é outra: rodar em JavaScript (navegador e Node), baixar só o município consultado e tratar quadra e lote. Um dos entregáveis planejados é um benchmark comparando os dois nos mesmos endereços.
+O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE, funciona offline e retorna nível de precisão e desvio em metros. É mais maduro e cobre geocodificação reversa e busca por CEP. A proposta do Candeia é outra: rodar em JavaScript (navegador e Node), baixar só o município consultado e tratar quadra e lote.
+
+Comparação nas mesmas 66 mil consultas do benchmark (geocodebr 0.7.0, entrada em campos separados; scripts em `bench/geocodebr/`). Os dois usam o CNEFE 2022 e o gabarito também vem dele, então mede o que cada motor faz com a mesma entrada, não a acurácia no mundo real.
+
+| grupo | ≤100 m Candeia | ≤100 m geocodebr | >1 km Candeia | >1 km geocodebr |
+|---|---|---|---|---|
+| endereço limpo | 75,6% | 73,1% | 8,1% | 8,1% |
+| com número de porta | 92,8% | 92,5% | 1,9% | 1,8% |
+| quadra e lote | 91,7% | 58,1% | 1,6% | 2,4% |
+| sem número | 34,0% | 30,1% | 22,9% | 23,4% |
+| sem bairro e CEP | 70,9% | 67,8% | 13,3% | 16,2% |
+| erro de digitação no nome | 72,7% | 74,1% | 7,8% | 7,2% |
+| erro dentro da margem declarada, ou até 100 m (`raio` × `desvio_metros`, limpo) | 91,7% | 93,7% | — | — |
+
+Leitura:
+
+- Com número de porta os dois empatam: a diferença (0,3 ponto) está dentro do ruído de uma amostra desse tamanho. A vantagem do Candeia no "endereço limpo" vem quase toda de quadra e lote e de sem número.
+- A vantagem do Candeia em quadra e lote vem de o geocodebr não ter campo para quadra e lote: ele recebeu só o logradouro. É uma diferença de escopo, não de qualidade do casamento, e são só 627 consultas.
+- Sem bairro e CEP o Candeia erra menos acima de 1 km (13,3% contra 16,2%).
+- O geocodebr ganha com erro de digitação. Ele usa o número de porta mesmo quando o nome da rua só casou por semelhança, e o Candeia não usa.
+- O geocodebr também é mais honesto sobre a própria margem: o erro fica dentro do `desvio_metros` que ele declara em 93,7% dos casos, contra 91,7% do `raio` do Candeia.
+
+Limites desta comparação:
+
+- O gabarito sai do CNEFE, a mesma base dos dois motores. Isso favorece quem reproduz o CNEFE com fidelidade e não diz nada sobre endereço fora dele.
+- As variantes com erro foram geradas pelo benchmark do Candeia, que também escolheu os grupos.
+- O geocodebr recebeu os campos já separados. Na prática, quem usa o geocodebr precisa separar o endereço antes, e o Candeia recebe o texto livre: aqui o geocodebr teve essa ajuda.
+- Não foram medidos tempo, memória nem tamanho de download.
 
 ## Roadmap
 
@@ -100,10 +127,10 @@ O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE
 - [x] Índice publicado e loader sob demanda
 - [x] Benchmark de regressão no CI
 - [ ] Validação com pontos conferidos em campo
-- [ ] Calibração de confiança por UF
-- [ ] Comparação com o geocodebr nos mesmos endereços
+- [x] Calibração de confiança por UF: medida e descartada, piora fora da amostra (ver abaixo)
+- [x] Comparação com o geocodebr nos mesmos endereços (ver [Relação com outros projetos](#relação-com-outros-projetos))
 - [ ] Pacote no npm
-- [ ] Guia de contribuição com casos de teste por UF
+- [x] Guia de contribuição com casos de teste por UF ([CONTRIBUTING.md](CONTRIBUTING.md))
 
 ## Desenvolvimento
 
@@ -114,7 +141,7 @@ node bench/ci.mjs    # benchmark de regressão sobre o índice publicado (~12 MB
 
 ## Contribuindo
 
-A ideia é que contribuir seja barato: regras de abreviação e tipos de via por UF ficam em casos de teste legíveis ("entrada, resultado esperado"). O CI roda um benchmark de regressão em todo pull request e falha se a acurácia cair mais de 1 ponto em qualquer grupo (`bench/ci.mjs`). Mudança intencional atualiza a referência com `node bench/ci.mjs --atualizar`.
+A ideia é que contribuir seja barato: o jeito de escrever endereço de cada UF fica em casos de teste legíveis (`test/casos/<UF>.json`, "entrada, resultado esperado"), sem precisar saber JavaScript. Ver [CONTRIBUTING.md](CONTRIBUTING.md). O CI roda um benchmark de regressão em todo pull request e falha se a acurácia cair mais de 1 ponto em qualquer grupo (`bench/ci.mjs`). Mudança intencional atualiza a referência com `node bench/ci.mjs --atualizar`.
 
 ## Origem
 

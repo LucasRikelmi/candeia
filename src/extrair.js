@@ -137,7 +137,16 @@ export function extrairEntidades(enderecoCru) {
   // #8 — Fallback: "N°10", "N 10", "Nº 10" sem vírgula (forma explícita de número)
   if (numero == null) {
     const mN = full.match(/\bn[°o.]?\s*(\d{1,5})\b/);
-    if (mN) numero = mN[1].replace(/^0+/, "") || "0";
+    if (mN) {
+      numero = mN[1].replace(/^0+/, "") || "0";
+      // Candeia — tira o "nº 500" do nome da via ("Av. Getulio Vargas nº 500" → via "getulio vargas").
+      // Só com o símbolo º/° escrito: "Avenida N2", "Rua N 113" e "Rua No 7" são nomes de via reais.
+      if (/\bn\s*[º°]\s*\d/i.test(cru)) {
+        const semN = base.replace(/\s+n\s*\d{1,5}\b.*$/, "");
+        const resto = semN.trim().split(/\s+/).filter((t) => !TIPOS_VIA.has(t));
+        if (semN !== base && resto.length) base = semN;
+      }
+    }
   }
 
   // Km como fallback de número — só quando não havia número real, nunca

@@ -1,0 +1,16 @@
+{
+  "uf": "BR",
+  "notas": "Padrões que valem em qualquer UF: abreviações, número sem vírgula, número por extenso, cruzamento.",
+  "casos": [
+    { "entrada": "Av. Pres. Vargas, 3000", "esperado": { "tipo": "avenida", "via": "presidente vargas", "numero": "3000" } },
+    { "entrada": "Tv. Dr. Moraes, 22", "esperado": { "tipo": "travessa", "via": "doutor moraes", "numero": "22" } },
+    { "entrada": "Av. Getúlio Vargas nº 500", "esperado": { "via": "getulio vargas", "numero": "500" } },
+    { "entrada": "Avenida Brasil 1500", "esperado": { "viaSemNumero": "brasil", "numeroSemVirgula": "1500" } },
+    { "entrada": "Rua Quarenta e Dois, 15", "esperado": { "via": "42", "numero": "15" } },
+    { "entrada": "Rua 7 de Setembro, 80", "esperado": { "via": "7 de setembro", "numero": "80" } },
+    { "entrada": "Rua das Flores esq. com Rua 2", "esperado": { "via": "das flores", "viaCruzamento": "2" } },
+    { "entrada": "Alameda Santos, 200 apto 31", "esperado": { "tipo": "alameda", "via": "santos", "numero": "200" } },
+    { "entrada": "Estrada da Usina, s/n", "esperado": { "tipo": "estrada", "via": "da usina", "numero": null } },
+    { "entrada": "Servidão Maria Rosa, 30", "esperado": { "tipo": "servidao", "via": "maria rosa", "numero": "30" } }
+  ]
+}

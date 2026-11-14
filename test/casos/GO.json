@@ -1,0 +1,12 @@
+{
+  "uf": "GO",
+  "notas": "Loteamentos com rua numerada e quadra/lote no lugar do número de porta; rodovias estaduais GO-NNN.",
+  "casos": [
+    { "entrada": "Rua 8, Qd 21 Lt 4", "esperado": { "tipo": "rua", "via": "8", "quadra": "21", "lote": "4", "numero": null } },
+    { "entrada": "Rua C-140 Qd 300 Lt 12", "esperado": { "via": "c-140", "quadra": "300", "lote": "12" } },
+    { "entrada": "Av. T-63, 1200", "esperado": { "tipo": "avenida", "via": "t-63", "numero": "1200" } },
+    { "entrada": "Q. 12 L. 5 Rua 3", "esperado": { "via": "3", "quadra": "12", "lote": "5" } },
+    { "entrada": "Rod. GO-060, km 12", "esperado": { "tipo": "rodovia", "via": "go 060", "km": "12" } },
+    { "entrada": "Av. Dr. Goias, 120", "esperado": { "via": "doutor goias", "numero": "120" } }
+  ]
+}
