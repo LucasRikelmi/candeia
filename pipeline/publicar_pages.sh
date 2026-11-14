@@ -43,7 +43,8 @@ if [[ ! -x "$NODE_DIR/bin/node" ]]; then
   mkdir -p "$FERRAMENTAS"
   TAR="$FERRAMENTAS/node-$NODE_VER-linux-x64.tar.xz"
   echo "== baixando Node $NODE_VER para $FERRAMENTAS"
-  curl -fL --retry 3 -o "$TAR" "https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz"
+  URL="https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz"
+  if command -v curl >/dev/null; then curl -fL --retry 3 -o "$TAR" "$URL"; else wget -O "$TAR" "$URL"; fi
   echo "$NODE_SHA256  $TAR" | sha256sum -c - || { rm -f "$TAR"; echo "sha256 do Node não confere" >&2; exit 1; }
   tar -xJf "$TAR" -C "$FERRAMENTAS"
   rm -f "$TAR"
@@ -68,9 +69,15 @@ if [[ -d "$DEST" ]]; then
 fi
 mkdir -p "$DEST"
 echo "== montando $DEST (hardlinks; cai para cópia se estiver em outro disco)"
+# UFS="AC AL AM" publica só essas UFs e sem manifesto (deploy parcial, para envios que caem no meio:
+# os arquivos de um deploy concluído não são reenviados no próximo). Sem UFS, publica tudo.
 ( cd "$ORIGEM" && find . -type f \( -name '*.json.gz' -o -name 'manifesto.json' \) \
     -not -path './_manifesto/*' -not -path './_tmp*' -print0 ) |
   while IFS= read -r -d '' f; do
+    if [[ -n "${UFS:-}" ]]; then
+      uf="${f#./}"; uf="${uf%%/*}"
+      [[ " $UFS " == *" $uf "* ]] || continue
+    fi
     mkdir -p "$DEST/$(dirname "$f")"
     ln "$ORIGEM/$f" "$DEST/$f" 2>/dev/null || cp -p "$ORIGEM/$f" "$DEST/$f"
   done

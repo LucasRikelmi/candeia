@@ -24,6 +24,8 @@ AMOSTRA = ["3550308", "5300108", "5208707", "1400100", "4314902"]  # SP, DF, Goi
 def baixar(url: str, origem: str | None, aceita: str = "identity") -> tuple[int, dict, bytes]:
     req = urllib.request.Request(url, headers={"Origin": origem} if origem else {})
     req.add_header("Accept-Encoding", aceita)
+    # A Cloudflare costuma barrar o User-Agent padrão "Python-urllib" (erro 1010); navegadores passam.
+    req.add_header("User-Agent", "candeia-verificador/1.0 (+https://github.com/LucasRikelmi/candeia)")
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return r.status, {k.lower(): v for k, v in r.headers.items()}, r.read()
