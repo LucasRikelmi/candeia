@@ -66,7 +66,55 @@ export function viaSimilarity(a, b) {
   // Evita JaroWinkler atribuir 0.95+ entre "rua 8" e "rua 80" (prefixo idêntico).
   const na = _terminalNum(a), nb = _terminalNum(b);
   if (na !== null && nb !== null && na !== nb) return 0;
-  return Math.max(jaccardTokens(a, b), jaroWinkler(a, b));
+  const s = Math.max(jaccardTokens(a, b), jaroWinkler(a, b));
+  // Candeia — Jaro-Winkler na string inteira dá nota alta a ruas diferentes que só dividem prefixo ou
+  // letras ("sao benedito" × "sao bento" 0,95; "da alegria" × "da galeria" 0,95). Se uma palavra da
+  // consulta foi TROCADA por outra (sobra palavra sem par dos dois lados), não é a mesma rua. Palavra
+  // a mais ou a menos de um lado só ("joao batista silva" × "joao batista") continua valendo.
+  if (s >= SIM_SEM_TROCA && _trocaPalavra(a, b)) return Math.min(s, SIM_SEM_TROCA - 0.01);
+  return s;
+}
+
+// Abaixo disto o motor já trata como "via não encontrada" (GATE_FUZZY em geocodificar.js).
+const SIM_SEM_TROCA = 0.7;
+const LIGACAO = new Set(["de", "da", "do", "das", "dos", "e"]);
+
+function _levenshtein(x, y, teto) {
+  if (Math.abs(x.length - y.length) > teto) return teto + 1;
+  let ant2 = null, ant = Array.from({ length: y.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= x.length; i++) {
+    const cur = [i];
+    let min = i;
+    for (let j = 1; j <= y.length; j++) {
+      cur[j] = Math.min(ant[j] + 1, cur[j - 1] + 1, ant[j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1));
+      // troca de duas letras vizinhas ("goais" × "goias") conta como um erro só
+      if (i > 1 && j > 1 && x[i - 1] === y[j - 2] && x[i - 2] === y[j - 1]) cur[j] = Math.min(cur[j], ant2[j - 2] + 1);
+      if (cur[j] < min) min = cur[j];
+    }
+    if (min > teto) return teto + 1;
+    ant2 = ant; ant = cur;
+  }
+  return ant[y.length];
+}
+
+// Duas palavras são "a mesma" com erro de digitação: 1 letra de diferença até 6 letras, 2 quando uma
+// delas tem 7 ou mais, mantendo a primeira letra. Inicial ("j" de "joao") vale do lado da consulta.
+function _mesmaPalavra(q, c) {
+  if (q === c) return true;
+  if (q.length === 1) return /[a-z]/.test(q) && c[0] === q;
+  if (q.length < 4 || c.length < 4 || q[0] !== c[0]) return false;
+  const teto = Math.max(q.length, c.length) >= 7 ? 2 : 1;
+  return _levenshtein(q, c, teto) <= teto;
+}
+
+export function _trocaPalavra(consulta, candidata) {
+  const junto = (t) => t.replace(/\s+/g, "").replace(/(^|\D)0+(?=\d)/g, "$1");
+  if (junto(consulta) === junto(candidata)) return false;
+  const tq = consulta.split(" ").filter((t) => t && !LIGACAO.has(t));
+  const tc = candidata.split(" ").filter((t) => t && !LIGACAO.has(t));
+  const sobraQ = tq.some((q) => !tc.some((c) => _mesmaPalavra(q, c)));
+  const sobraC = tc.some((c) => !tq.some((q) => _mesmaPalavra(q, c)));
+  return sobraQ && sobraC;
 }
 
 // #18 — Classificadores genéricos de bairro/loteamento são a causa de falso

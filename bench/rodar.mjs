@@ -157,9 +157,23 @@ for (const [cod, linhas] of Object.entries(porMun)) {
           const c = out.coord;
           const dist = c && Number.isFinite(c.lat) ? haversine(lat, lon, c.lat, c.lon) : null;
           resultados[nome].push({ id: r.id, uf: r.uf, cod, porte: r.porte, com_numero: temNumero(r), cenario,
-            variante, consulta: q.end, status: out.status, metodo: out.metodo ?? null, raio: out.raio ?? null, dist: dist == null ? null : Math.round(dist * 10) / 10 });
+            variante, consulta: q.end, status: out.status, metodo: out.metodo ?? null, raio: out.raio ?? null, viaScore: out.viaScore ?? null, dist: dist == null ? null : Math.round(dist * 10) / 10 });
         }
         restaurar?.();
+      }
+      // N — rua que não existe no município: nome de via sorteado de outro município da amostra, com o
+      // complemento deste endereço. O certo é vermelho (ou CEP). Mede o falso positivo do casamento fuzzy.
+      const doador = amostra[hash(r.id + "|N") % amostra.length];
+      const chaveDoador = doador.cod === cod ? null : G.entradaDeLinhaCnefe({ NOM_TITULO_SEGLOGR: doador.titulo,
+        NOM_SEGLOGR: doador.nome, LATITUDE: doador.lat, LONGITUDE: doador.lon, NV_GEO_COORD: doador.nv, COD_MUNICIPIO: cod })?.via;
+      if (chaveDoador && !dic[chaveDoador]) {
+        const end = [doador.tipo, doador.titulo, doador.nome].filter(Boolean).join(" ") + complemento(r);
+        let out;
+        try { out = G.geocodificar({ codMunicipio: cod, enderecoCru: end, bairro: "", cepConsulta: "" }, idx, opts); }
+        catch (e) { out = { status: "erro", coord: null }; }
+        resultados[nome].push({ id: r.id, uf: r.uf, cod, porte: r.porte, com_numero: temNumero(r), cenario: "N",
+          variante: "inexistente", consulta: end, status: out.status, metodo: out.metodo ?? null, raio: out.raio ?? null,
+          viaScore: out.viaScore ?? null, viaKey: out.viaKey ?? null, dist: null });
       }
     }
   }
@@ -174,9 +188,10 @@ for (const { nome } of motores) {
   const res = resultados[nome];
   const A = res.filter((x) => x.cenario === "A");
   relatorio[nome] = {
-    geral: agrupar(res, (x) => `${x.cenario} ${x.variante}`),
+    geral: agrupar(res.filter((x) => x.cenario !== "N"), (x) => `${x.cenario} ${x.variante}`),
     por_cor_A: agrupar(A, (x) => x.status),
     por_cor_B: agrupar(res.filter((x) => x.cenario === "B"), (x) => x.status),
+    por_cor_N: Object.fromEntries(Object.entries(Object.groupBy(res.filter((x) => x.cenario === "N"), (x) => x.status)).map(([k, v]) => [k, v.length])),
     por_uf_A_limpa: agrupar(A.filter((x) => x.variante === "limpa"), (x) => x.uf),
     por_porte_A_limpa: agrupar(A.filter((x) => x.variante === "limpa"), (x) => x.porte),
     por_numero_A_limpa: agrupar(A.filter((x) => x.variante === "limpa"), (x) => (x.com_numero ? "com número" : "sem número")),

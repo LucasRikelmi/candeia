@@ -58,7 +58,7 @@ const r = await geo.geocodificar("Rua 8, Qd 21 Lt 4", {
 
 Município pequeno é um arquivo só. Município grande baixa o índice de vias e só a fatia da via pedida: no benchmark, uma consulta fria em São Paulo baixa ~1,3 MB e a seguinte na mesma via não baixa nada. O loader confere o sha256 de cada arquivo contra o manifesto. A página `exemplo/index.html` mostra o uso no navegador. Fora do navegador, passe um `fetch` com `User-Agent` próprio, por exemplo `criarGeocodificador({ base, fetch: (u) => fetch(u, { headers: { "User-Agent": "meu-sistema/1.0" } }) })`: a Cloudflare barra assinaturas genéricas de cliente, como a do Python (ver [docs/PUBLICACAO.md](docs/PUBLICACAO.md)).
 
-Medido no benchmark (cenário com o endereço no índice, variante limpa; rodada 7): 73,8% até 100 m no geral e 92,1% com número de porta. Verde acerta até 100 m em 99,7% dos casos. Endereço sem número fica em ~38%, limitado pela extensão da via, e o `raio` diz isso.
+Medido no benchmark (cenário com o endereço no índice, variante limpa; rodada 8): 74,2% até 100 m no geral e 92,5% com número de porta. Verde acerta até 100 m em 99,8% dos casos. Endereço sem número fica em ~38%, limitado pela extensão da via, e o `raio` diz isso. Rua que não existe na cidade volta vermelho (centro do município) em 83% dos casos; no resto, casa com uma rua de nome parecido, e a cor e o `raio` mostram a incerteza.
 
 Fluxo de uma consulta:
 
