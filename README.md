@@ -2,7 +2,7 @@
 
 Geocodificação de endereços brasileiros que roda no seu próprio código, sem servidor, sem chave de API e sem custo por consulta.
 
-> **Status: v1.0.0.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). O pacote ainda não está no npm. Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Um benchmark de regressão roda no CI a cada PR.
+> **Status: v1.0.0.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). O pacote não está no npm: instale pelo GitHub (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Um benchmark de regressão roda no CI a cada PR.
 
 ## O problema
 
@@ -18,11 +18,23 @@ Falta uma opção gratuita que rode dentro de um site ou de um backend comum e e
 O IBGE publica o CNEFE, o cadastro de endereços usado no Censo, com coordenadas. Com ele dá para montar um geocodificador **estático**:
 
 - **Sem servidor.** O código roda no navegador ou no Node de quem usa. Os dados são arquivos estáticos públicos. Nenhuma lógica roda do nosso lado, e o host dos arquivos nunca vê o endereço consultado, só qual município foi baixado.
-- **Dados por município.** Quem consulta Belo Horizonte baixa o arquivo de Belo Horizonte, não o Brasil. O arquivo fica em cache local, e a segunda consulta não usa rede. Quem quiser tudo offline baixa o pacote da UF e serve do próprio ambiente.
+- **Dados por município.** Quem consulta Belo Horizonte baixa o arquivo de Belo Horizonte, não o Brasil. O arquivo fica em memória (e no cache HTTP do navegador), e a segunda consulta não usa rede. Quem quiser tudo no próprio ambiente pode espelhar os arquivos do índice (CC BY 4.0) e apontar `base` para lá.
 - **Resposta com qualidade explícita.** Cada resultado traz o nível em que o endereço foi encontrado e uma estimativa de erro em metros, em vez de fingir precisão que não tem.
 - **Endereço do jeito que é digitado.** Abreviações ("R.", "Av.", "Tv."), rodovias com a sigla da UF, quadra e lote no lugar do número de porta, complemento no campo errado.
 
 ## Uso
+
+Node 22 ou mais (sem dependências):
+
+```sh
+npm install github:LucasRikelmi/candeia#v1.0.0
+```
+
+No navegador, direto de um CDN que serve o GitHub:
+
+```js
+import { criarGeocodificador } from "https://cdn.jsdelivr.net/gh/LucasRikelmi/candeia@v1.0.0/src/index.js";
+```
 
 ```js
 import { criarGeocodificador } from "candeia";
@@ -44,32 +56,32 @@ const r = await geo.geocodificar("Rua 8, Qd 21 Lt 4", {
 // }
 ```
 
-Município pequeno é um arquivo só. Município grande baixa o índice de vias e só a fatia da via pedida: no benchmark, uma consulta fria em São Paulo baixa ~1,3 MB e a seguinte na mesma via não baixa nada. O loader confere o sha256 de cada arquivo contra o manifesto. A página `exemplo/index.html` mostra o uso no navegador.
+Município pequeno é um arquivo só. Município grande baixa o índice de vias e só a fatia da via pedida: no benchmark, uma consulta fria em São Paulo baixa ~1,3 MB e a seguinte na mesma via não baixa nada. O loader confere o sha256 de cada arquivo contra o manifesto. A página `exemplo/index.html` mostra o uso no navegador. Fora do navegador, passe um `fetch` com `User-Agent` próprio, por exemplo `criarGeocodificador({ base, fetch: (u) => fetch(u, { headers: { "User-Agent": "meu-sistema/1.0" } }) })`: a Cloudflare barra assinaturas genéricas de cliente, como a do Python (ver [docs/PUBLICACAO.md](docs/PUBLICACAO.md)).
 
-Medido no benchmark (cenário com o endereço no índice, variante limpa): 72,9% até 100 m no geral, 91% com número de porta; verde acerta até 100 m em 99,7% dos casos. Endereço sem número fica em ~36%, limitado pela extensão da via, e o `raio` diz isso.
+Medido no benchmark (cenário com o endereço no índice, variante limpa; rodada 7): 73,8% até 100 m no geral e 92,1% com número de porta. Verde acerta até 100 m em 99,7% dos casos. Endereço sem número fica em ~38%, limitado pela extensão da via, e o `raio` diz isso.
 
 Fluxo de uma consulta:
 
 1. **Normalização local.** Tipo da via, nome, número, quadra e lote são extraídos e padronizados.
-2. **Escolha do município** por código, nome ou CEP, usando uma tabela pequena embutida.
-3. **Download do arquivo do município** (uma única requisição GET de arquivo estático) ou leitura do cache local.
+2. **Município** pelo código IBGE de 7 dígitos, informado por quem chama.
+3. **Download do arquivo do município** (ou do índice de vias e da fatia da via, nos grandes), ou leitura do que já está em memória.
 4. **Busca por token do nome da via**, para não comparar com todas as ruas da cidade.
 5. **Pontuação do nome** com Jaro-Winkler e Jaccard por tokens. Bairro e CEP desempatam ruas homônimas.
-6. **Refinamento por número, quadra e lote.** Sem número, a busca desce para quadra, depois logradouro, depois bairro, CEP e município, e o nível devolvido diz até onde chegou.
+6. **Refinamento por número, quadra e lote.** Sem número, o motor tenta interpolar entre vizinhos, depois cai para o eixo da via, o CEP e o centro do município. `metodo` diz até onde chegou e `raio` quanto o ponto pode estar longe.
 
 ## Dados
 
 - **Fonte:** CNEFE, Censo 2022, IBGE. O IBGE trata o conteúdo do portal como domínio público, com citação obrigatória da fonte. O índice sai sob CC BY 4.0. O que foi conferido e os limites dessa conferência estão em [DADOS.md](DADOS.md).
 - **Formato:** o artefato canônico do pipeline é Parquet sem perda, particionado por UF e município (CSV 18,2 GB → Parquet 3,2 GB no país). O que o cliente baixa é um índice próprio em JSON comprimido com gzip: um arquivo por município (abaixo de 1 MB em 5.425 dos 5.570) e, nos 145 maiores, um índice de vias mais fatias de pontos de até ~0,6 MB. O país inteiro soma ~1 GB; o pior caso de uma consulta (São Paulo capital) baixa ~1,3 MB. Detalhes e medições em `docs/ARQUITETURA.md`.
 - **Pipeline:** os dados nunca entram por pull request. Eles são gerados apenas pelo pipeline do repositório, de forma reproduzível.
-- **Análise por UF:** o repositório também guarda a análise exploratória de cada UF (tipos de logradouro, abreviações, proporção de endereços sem número, qualidade de CEP). É dela que saem as regras de normalização.
+- **Medições:** as análises que definiram as regras (tipos de logradouro, rodovias por UF, tamanho por município, DF) estão em `docs/ARQUITETURA.md` e nos scripts `pipeline/medir_*.py`.
 
 Cada UF escreve endereço de um jeito. Na amostra inicial, o DF tem 96% dos registros com tipo "EDF" e 97% sem número de porta, com o endereço real em quadra, conjunto e lote. O AC tem 57% de CEPs genéricos da cidade e vias rurais como ramal, igarapé e seringal. Um motor que só funciona com "rua + número" não cobre isso.
 
 ## Qualidade e honestidade sobre os números
 
-- Um score de similaridade não é probabilidade. A confiança só será exibida em percentual depois de calibrada contra o benchmark, separadamente por UF.
-- O benchmark sintético sorteia endereços do próprio CNEFE e os suja (abreviações, erros de digitação, campos faltando). Ele é otimista por construção, porque o gabarito vem da mesma base. O README vai dizer isso junto com os resultados.
+- Um score de similaridade não é probabilidade. A `confianca` devolvida é a fração medida no benchmark para a mesma cor e faixa de raio, validada fora da amostra (metade dos municípios ajusta, a outra mede). Ainda não é separada por UF.
+- O benchmark sintético sorteia endereços do próprio CNEFE e os suja (abreviações, erros de digitação, campos faltando). Ele é otimista por construção, porque o gabarito vem da mesma base. Ainda não há validação com pontos conferidos em campo.
 - O CNEFE é de 2022. Endereços novos não existem nele.
 - Coordenadas aproximadas servem para mapa, roteirização grosseira, estatística e triagem. Não servem para localizar um portão específico quando o nível devolvido for `logradouro` ou menor.
 
@@ -80,24 +92,29 @@ O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE
 ## Roadmap
 
 - [x] Núcleo de normalização e matching em JavaScript, portado do geocodificador do NEXO, com testes de regressão
-- [ ] Pipeline de dados (CNEFE → Parquet por município) com manifesto e hash
-- [ ] Análise exploratória por UF
-- [ ] Medição de tamanho por município e escolha do formato de distribuição
-- [ ] Suporte a quadra e lote (GO, DF e demais UFs que usam)
-- [ ] Interpolação para número de porta inexistente
-- [ ] Benchmark sintético, calibração de confiança por UF e comparação com o geocodebr
-- [ ] Pacote npm e distribuição dos dados
+- [x] Pipeline de dados (CNEFE → Parquet por município → índice) com manifesto e hash
+- [x] Medição de tamanho por município e escolha do formato de distribuição
+- [x] Suporte a quadra e lote, incluindo o endereço estruturado do DF
+- [x] Interpolação para número de porta inexistente
+- [x] Benchmark sintético e calibração de confiança por cor e raio
+- [x] Índice publicado e loader sob demanda
+- [x] Benchmark de regressão no CI
+- [ ] Validação com pontos conferidos em campo
+- [ ] Calibração de confiança por UF
+- [ ] Comparação com o geocodebr nos mesmos endereços
+- [ ] Pacote no npm
 - [ ] Guia de contribuição com casos de teste por UF
 
 ## Desenvolvimento
 
 ```sh
-npm test   # Node >= 22, sem dependências
+npm test             # Node >= 22, sem dependências
+node bench/ci.mjs    # benchmark de regressão sobre o índice publicado (~12 MB, ~25 s)
 ```
 
 ## Contribuindo
 
-A ideia é que contribuir seja barato: regras de abreviação e tipos de via por UF ficam em casos de teste legíveis ("entrada, resultado esperado"). O CI roda o benchmark em todo pull request e bloqueia mudanças que reduzam a acurácia. Detalhes virão com o guia de contribuição.
+A ideia é que contribuir seja barato: regras de abreviação e tipos de via por UF ficam em casos de teste legíveis ("entrada, resultado esperado"). O CI roda um benchmark de regressão em todo pull request e falha se a acurácia cair mais de 1 ponto em qualquer grupo (`bench/ci.mjs`). Mudança intencional atualiza a referência com `node bench/ci.mjs --atualizar`.
 
 ## Origem
 
