@@ -1,6 +1,6 @@
 {
   "name": "candeia",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Geocodificação de endereços brasileiros a partir do CNEFE (IBGE), sem servidor.",
   "type": "module",
