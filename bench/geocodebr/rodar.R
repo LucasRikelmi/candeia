@@ -1,5 +1,7 @@
 # Roda o geocodebr (IPEA) na entrada gerada por bench/geocodebr/preparar.mjs.
 #
+# Ubuntu, antes: sudo apt install -y r-base libudunits2-dev libgdal-dev libgeos-dev libproj-dev libssl-dev libcurl4-openssl-dev
+#
 # Uso (na pasta onde está entrada_geocodebr.csv):
 #   Rscript rodar.R entrada_geocodebr.csv saida_geocodebr.csv
 #
