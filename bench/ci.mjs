@@ -174,6 +174,11 @@ for (const cod of FATIADOS) {
   const dic = {};
   for (const a of m.arquivos) if (a.nome !== "index.json.gz") Object.assign(dic, await json(`${m.uf}/${cod}/${a.nome}`));
   const { idx, opts } = prepararOpts(cod, dic);
+  // O loader usa o centroide gravado no index.json (calculado pelo pipeline), que difere em casas
+  // decimais do centroide() do JS. Só aparece na resposta vermelha (centro do município); a paridade
+  // testa o carregamento por fatias, então o motor recebe o mesmo centroide.
+  const [la, lo] = (await json(`${m.uf}/${cod}/index.json.gz`)).centroide;
+  opts.centroideMunicipio = { lat: la, lon: lo };
   for (const s of sel(dic, cod, PARIDADE_POR_MUNICIPIO)) {
     const v = variantes(s, `${cod}|${s.k}|${s.h}`);
     for (const q of [v.limpa, v.sem_bairro_cep, v.numero_omitido].filter(Boolean)) {
