@@ -69,9 +69,15 @@ if [[ -d "$DEST" ]]; then
 fi
 mkdir -p "$DEST"
 echo "== montando $DEST (hardlinks; cai para cópia se estiver em outro disco)"
+# UFS="AC AL AM" publica só essas UFs e sem manifesto (deploy parcial, para envios que caem no meio:
+# os arquivos de um deploy concluído não são reenviados no próximo). Sem UFS, publica tudo.
 ( cd "$ORIGEM" && find . -type f \( -name '*.json.gz' -o -name 'manifesto.json' \) \
     -not -path './_manifesto/*' -not -path './_tmp*' -print0 ) |
   while IFS= read -r -d '' f; do
+    if [[ -n "${UFS:-}" ]]; then
+      uf="${f#./}"; uf="${uf%%/*}"
+      [[ " $UFS " == *" $uf "* ]] || continue
+    fi
     mkdir -p "$DEST/$(dirname "$f")"
     ln "$ORIGEM/$f" "$DEST/$f" 2>/dev/null || cp -p "$ORIGEM/$f" "$DEST/$f"
   done
