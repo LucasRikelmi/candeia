@@ -87,7 +87,20 @@ Cada UF escreve endereço de um jeito. Na amostra inicial, o DF tem 96% dos regi
 
 ## Relação com outros projetos
 
-O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE, funciona offline e retorna nível de precisão e desvio em metros. É mais maduro e cobre geocodificação reversa e busca por CEP. A proposta do Candeia é outra: rodar em JavaScript (navegador e Node), baixar só o município consultado e tratar quadra e lote. Um dos entregáveis planejados é um benchmark comparando os dois nos mesmos endereços.
+O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE, funciona offline e retorna nível de precisão e desvio em metros. É mais maduro e cobre geocodificação reversa e busca por CEP. A proposta do Candeia é outra: rodar em JavaScript (navegador e Node), baixar só o município consultado e tratar quadra e lote.
+
+Comparação nas mesmas 66 mil consultas do benchmark (geocodebr 0.7.0, entrada em campos separados; scripts em `bench/geocodebr/`). Os dois usam o CNEFE 2022 e o gabarito também vem dele, então mede o que cada motor faz com a mesma entrada, não a acurácia no mundo real.
+
+| grupo | ≤100 m Candeia | ≤100 m geocodebr | >1 km Candeia | >1 km geocodebr |
+|---|---|---|---|---|
+| endereço limpo | 75,6% | 73,1% | 8,1% | 8,1% |
+| com número de porta | 92,8% | 92,5% | 1,9% | 1,8% |
+| quadra e lote | 91,7% | 58,1% | 1,6% | 2,4% |
+| sem número | 34,0% | 30,1% | 22,9% | 23,4% |
+| sem bairro e CEP | 70,9% | 67,8% | 13,3% | 16,2% |
+| erro de digitação no nome | 72,7% | 74,1% | 7,8% | 7,2% |
+
+Com número de porta os dois empatam. O Candeia ganha onde o endereço é quadra e lote (o geocodebr não tem campo para isso) e quando faltam bairro e CEP. O geocodebr ganha com erro de digitação: ele usa o número de porta mesmo quando o nome da rua só casou por semelhança, e o Candeia ainda não.
 
 ## Roadmap
 
@@ -101,7 +114,7 @@ O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE
 - [x] Benchmark de regressão no CI
 - [ ] Validação com pontos conferidos em campo
 - [x] Calibração de confiança por UF: medida e descartada, piora fora da amostra (ver abaixo)
-- [ ] Comparação com o geocodebr nos mesmos endereços (scripts prontos em `bench/geocodebr/`)
+- [x] Comparação com o geocodebr nos mesmos endereços (ver [Relação com outros projetos](#relação-com-outros-projetos))
 - [ ] Pacote no npm
 - [x] Guia de contribuição com casos de teste por UF ([CONTRIBUTING.md](CONTRIBUTING.md))
 
