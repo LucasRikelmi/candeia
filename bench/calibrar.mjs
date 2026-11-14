@@ -16,7 +16,8 @@ if (!args.resultados) { console.error("uso: node bench/calibrar.mjs --resultados
 const SAIDA = args.saida || new URL("../src/calibracao_tabela.js", import.meta.url).pathname;
 const MIN_N = 200;
 
-const res = JSON.parse(readFileSync(args.resultados, "utf8"));
+// N (rua inexistente) não tem gabarito: fica fora da calibração.
+const res = JSON.parse(readFileSync(args.resultados, "utf8")).filter((x) => x.cenario !== "N");
 const ok = (x) => x.dist != null && x.dist <= 100;
 const ruim = (x) => x.dist == null || x.dist > 1000;
 

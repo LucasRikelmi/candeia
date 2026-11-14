@@ -25,3 +25,17 @@ test("bairro: numeral romano final (#18)", () => {
 test("bairro: nome truncado (#18)", () => {
   assert.equal(bairroSimilarity("parque ind vice presidente jose", "parque ind vice pres"), 0.9);
 });
+
+test("palavra trocada não é a mesma rua", () => {
+  for (const [a, b] of [["sao benedito", "sao bento"], ["da alegria", "da galeria"], ["jose goncalves", "jose alves"],
+    ["inexistente xyz", "ii"], ["1 de maio", "13 de maio"]]) {
+    assert.ok(viaSimilarity(a, b) < 0.7, `${a} × ${b}`);
+  }
+});
+
+test("erro de digitação e palavra a mais continuam casando", () => {
+  for (const [a, b] of [["goais", "goias"], ["thereza", "teresa"], ["joao batista silva", "joao batista"],
+    ["tancledo neves", "tancredo neves"], ["j016", "j 16"]]) {
+    assert.ok(viaSimilarity(a, b) >= 0.85, `${a} × ${b}`);
+  }
+});
