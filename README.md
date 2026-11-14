@@ -2,7 +2,7 @@
 
 Geocodificação de endereços brasileiros que roda no seu próprio código, sem servidor, sem chave de API e sem custo por consulta.
 
-> **Status: v1.0.1.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). O pacote não está no npm: instale pelo GitHub (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Um benchmark de regressão roda no CI a cada PR.
+> **Status: v1.1.0.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). Instalação pelo npm (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Um benchmark de regressão roda no CI a cada PR.
 
 ## O problema
 
@@ -27,13 +27,13 @@ O IBGE publica o CNEFE, o cadastro de endereços usado no Censo, com coordenadas
 Node 22 ou mais (sem dependências):
 
 ```sh
-npm install github:LucasRikelmi/candeia#v1.0.1
+npm install candeia
 ```
 
-No navegador, direto de um CDN que serve o GitHub:
+No navegador, direto de um CDN:
 
 ```js
-import { criarGeocodificador } from "https://cdn.jsdelivr.net/gh/LucasRikelmi/candeia@v1.0.1/src/index.js";
+import { criarGeocodificador } from "https://cdn.jsdelivr.net/npm/candeia@1.1.0/src/index.js";
 ```
 
 ```js
@@ -89,9 +89,9 @@ Cada UF escreve endereço de um jeito. Na amostra inicial, o DF tem 96% dos regi
 
 O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE, funciona offline e retorna nível de precisão e desvio em metros. É mais maduro e cobre geocodificação reversa e busca por CEP. A proposta do Candeia é outra: rodar em JavaScript (navegador e Node), baixar só o município consultado e tratar quadra e lote.
 
-Comparação nas mesmas 66 mil consultas do benchmark (geocodebr 0.7.0, entrada em campos separados; scripts em `bench/geocodebr/`). Os dois usam o CNEFE 2022 e o gabarito também vem dele, então mede o que cada motor faz com a mesma entrada, não a acurácia no mundo real.
+Comparação nas mesmas 66 mil consultas (≤100 m: fração de respostas a até 100 m do ponto certo; >1 km: fração que errou por mais de 1 km) do benchmark (geocodebr 0.7.0, entrada em campos separados; scripts em `bench/geocodebr/`). Os dois usam o CNEFE 2022 e o gabarito também vem dele, então mede o que cada motor faz com a mesma entrada, não a acurácia no mundo real.
 
-| grupo | ≤100 m Candeia | ≤100 m geocodebr | >1 km Candeia | >1 km geocodebr |
+| grupo | ≤100 m Candeia (maior é melhor) | ≤100 m geocodebr (maior é melhor) | >1 km Candeia (menor é melhor) | >1 km geocodebr (menor é melhor) |
 |---|---|---|---|---|
 | endereço limpo | 75,8% | 73,1% | 8,0% | 8,1% |
 | com número de porta | 93,2% | 92,5% | 1,8% | 1,8% |
@@ -129,7 +129,7 @@ Limites desta comparação:
 - [ ] Validação com pontos conferidos em campo
 - [x] Calibração de confiança por UF: medida e descartada, piora fora da amostra (ver abaixo)
 - [x] Comparação com o geocodebr nos mesmos endereços (ver [Relação com outros projetos](#relação-com-outros-projetos))
-- [ ] Pacote no npm
+- [x] Pacote no npm
 - [x] Guia de contribuição com casos de teste por UF ([CONTRIBUTING.md](CONTRIBUTING.md))
 
 ## Desenvolvimento

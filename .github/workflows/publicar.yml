@@ -1,0 +1,28 @@
+# Publica no npm quando uma release é publicada no GitHub.
+# Autenticação por "trusted publishing" (OIDC): sem token guardado no repositório.
+# Configuração no npmjs.com: pacote candeia → Settings → Trusted Publisher → GitHub Actions,
+# repositório LucasRikelmi/candeia, workflow publicar.yml.
+name: publicar
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest
+      - name: Tag da release igual à versão do package.json
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          test "$v" = "${{ github.event.release.tag_name }}" || { echo "tag ${{ github.event.release.tag_name }} ≠ package.json $v"; exit 1; }
+      - run: npm test
+      - run: node bench/ci.mjs
+      - run: npm publish
