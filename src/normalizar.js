@@ -79,6 +79,10 @@ export const TIPOS_VIA = new Set([
   "sitio", "chacara", "fazenda", "assentamento",
   // Candeia — tipos rurais e locais frequentes no CNEFE (erros do benchmark concentrados neles)
   "linha", "ramal", "vicinal", "beco", "acesso", "travessao", "ladeira", "largo", "caminho",
+  // Candeia — demais tipos do CNEFE com ≥0,05% das entradas (medido no recorte do benchmark,
+  // 2026-11-14). De fora por serem também começo de nome comum: vila, rio, alto, ilha, lago, bairro.
+  "servidao", "povoado", "aldeia", "escadaria", "passagem", "passarela", "corrego", "igarape",
+  "entrada", "condominio", "distrito", "corredor",
   // Candeia — "EDF" é o tipo dos logradouros do DF no CNEFE ("EDF QNN 25 CONJUNTO B")
   "edf",
 ]);

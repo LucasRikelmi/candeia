@@ -121,3 +121,22 @@ test("via estruturada não aparece em endereço comum", () => {
     assert.equal(extrairEntidades(end).viaEstruturada, null, end);
   }
 });
+
+test("esquina logo depois do tipo é nome de localidade, não cruzamento", () => {
+  const q = extrairEntidades("Estrada Esquina Borges, 3000");
+  assert.equal(q.via, "esquina borges");
+  assert.equal(q.viaCruzamento, null);
+  assert.equal(q.numero, "3000");
+  assert.equal(extrairEntidades("Estrada Esquina Redim a Esquina Borges").via, "esquina redim a esquina borges");
+  // cruzamento de verdade continua igual
+  const c = extrairEntidades("Rua 8 esquina com Rua 9");
+  assert.equal(c.via, "8");
+  assert.equal(c.viaCruzamento, "9");
+});
+
+test("tipos rurais do CNEFE saem do nome da via", () => {
+  for (const [end, via] of [["Povoado Junco", "junco"], ["Servidão José Meiser, 100", "jose meiser"],
+    ["Aldeia Apeti", "apeti"], ["Entrada São João Velho", "sao joao velho"], ["Corredor Boiadeiro", "boiadeiro"]]) {
+    assert.equal(extrairEntidades(end).via, via, end);
+  }
+});

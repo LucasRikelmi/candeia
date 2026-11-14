@@ -151,7 +151,8 @@ for (const cod of UNICOS) {
       const out = G.geocodificar({ codMunicipio: cod, enderecoCru: q.end, bairro: q.bairro, cepConsulta: q.cep }, idx, opts);
       const c = out.coord;
       const dist = c && Number.isFinite(c.lat) ? haversine(s.e.la, s.e.lo, c.lat, c.lon) : null;
-      resultados.push({ cod, cenario, variante, status: out.status, raio: out.raio ?? null, dist });
+      resultados.push({ cod, cenario, variante, status: out.status, metodo: out.metodo ?? null, raio: out.raio ?? null, dist,
+        consulta: q.end, bairro: q.bairro, cep: q.cep, via: s.k, viaKey: out.viaKey ?? null, gabarito: s.e });
     };
     for (const [variante, q] of Object.entries(vs)) medir("A", variante, q, base.idx, base.opts);
     // B: retira da via os pontos na coordenada do gabarito e reconstrói os índices.
@@ -222,6 +223,9 @@ const relatorio = [`### Benchmark de regressão (índice ${LOCAL ? "local" : BAS
   falhas.length ? `**${falhas.length} problema(s):**\n${falhas.map((f) => `- ${f}`).join("\n")}` : "Sem regressão."].join("\n");
 console.log(relatorio);
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, relatorio + "\n");
+
+// --saida <arquivo>: grava cada consulta (para investigar os erros grandes).
+if (opt("--saida")) writeFileSync(opt("--saida"), JSON.stringify(resultados));
 
 // Linha única com a referência calculada nesta rodada: dá para copiar do log do CI.
 console.log("REFERENCIA_ATUAL " + JSON.stringify({ indice: "cnefe2022/v1", grupos: atual }));

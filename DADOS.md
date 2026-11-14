@@ -16,6 +16,18 @@ O índice é distribuído sob a [Creative Commons Atribuição 4.0 Internacional
 
 Usar o geocodificador para consultar endereços não exige atribuição. A atribuição vale para quem copia ou republica os arquivos do índice.
 
-## Pendência conhecida
+## Termos de uso do CNEFE (conferido em 2026-11-14)
 
-Os termos de uso do CNEFE não foram conferidos linha a linha por este projeto. Até onde se sabe, os dados do IBGE são públicos e de reuso livre com citação da fonte. Se o IBGE exigir outra forma de atribuição, ela prevalece sobre o texto acima.
+O que foi encontrado:
+
+- **Não há licença explícita para o CNEFE.** A [página de divulgação dos microdados do CNEFE 2022](https://www.ibge.gov.br/comunicados/40157-ibge-divulga-microdados-do-cadastro-nacional-de-enderecos-para-fins-estatisticos-cnefe-oriundos-do-censo-demografico-2022) não traz termo de uso, licença nem regra de citação. Ela só aponta o termo de uso e a política de privacidade gerais do portal.
+- **A posição do IBGE sobre o conteúdo do portal** é a da resposta oficial do atendimento (protocolo 8171/2009, de 08/01/2009), divulgada na [lista do OpenStreetMap](https://lists.openstreetmap.org/pipermail/imports/2013-July/001981.html). Segundo ela, os conteúdos do portal são de domínio público, e o uso em outras publicações ou portais está condicionado à citação da fonte (IBGE). É com base nessa posição que o OpenStreetMap usa dados do IBGE ([wiki](https://wiki.openstreetmap.org/Pt-br:Tag:source=IBGE)).
+- **Dados pessoais:** o índice não guarda nome de estabelecimento, complemento de unidade (apartamento, sala) nem qualquer campo além de via, tipo, número, quadra/lote, localidade, CEP, coordenada, nível da coordenada e a contagem de pontos repetidos.
+
+Consequência: a licença CC BY 4.0 do índice está em linha com essa posição, porque exige atribuição e a atribuição acima cita o IBGE primeiro.
+
+Limites desta conferência:
+- A resposta de 2009 é anterior ao CNEFE 2022 e não é um termo formal.
+- Ela não é uma análise jurídica.
+
+Se o IBGE publicar termo específico para o CNEFE, ou exigir outra forma de atribuição, o termo do IBGE prevalece sobre este texto.
