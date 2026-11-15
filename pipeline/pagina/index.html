@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Índice de dados do Candeia | CNEFE 2022</title>
+<meta name="description" content="Índice de endereços que o geocodificador Candeia baixa sob demanda: um arquivo por município, derivado do CNEFE do Censo 2022 (IBGE). Fonte, licença, formato e versões.">
+<meta name="author" content="Lucas Rikelmi">
+<link rel="canonical" href="https://dados.lucasrikelmi.dev/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:url" content="https://dados.lucasrikelmi.dev/">
+<meta property="og:title" content="Índice de dados do Candeia | CNEFE 2022">
+<meta property="og:description" content="Arquivos estáticos por município, derivados do CNEFE do Censo 2022 (IBGE), para o geocodificador Candeia. CC BY 4.0.">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8fa">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0e12">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fontes/instrument-serif-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fontes/bricolage-grotesque-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/pagina.css">
+</head>
+<body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+<header class="wrap">
+  <span class="mono">dados.lucasrikelmi.dev</span>
+  <h1>Índice de dados do <em>Candeia</em></h1>
+  <p class="lede">Aqui ficam os arquivos que o <strong>Candeia</strong>, um geocodificador de endereços brasileiros, baixa quando alguém consulta um endereço. <strong>Não é um site para navegar:</strong> é uma base de arquivos estáticos, lida por código.</p>
+  <div class="acoes">
+    <a class="btn primary" href="https://github.com/LucasRikelmi/candeia">Código no GitHub</a>
+    <a class="btn" href="https://www.npmjs.com/package/candeia">Pacote no npm</a>
+    <a class="btn" href="https://candeia.lucasrikelmi.dev/exemplo/">Demo</a>
+  </div>
+</header>
+
+<main id="conteudo" class="wrap">
+
+  <section aria-labelledby="t-oque">
+    <h2 id="t-oque">O que é</h2>
+    <p>O índice é uma transformação do <strong>Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE)</strong> do Censo Demográfico 2022, divulgado publicamente pelo IBGE. O pipeline do repositório seleciona colunas, normaliza o nome da via, descarta as coordenadas de centróide, agrupa os pontos por via e comprime o resultado. Nenhum dado de outra fonte é acrescentado.</p>
+    <p>Cada município vira um arquivo. Quem consulta um endereço baixa só o município daquele endereço, e o servidor destes arquivos vê qual município foi pedido, nunca o endereço consultado.</p>
+  </section>
+
+  <section aria-labelledby="t-versoes">
+    <h2 id="t-versoes">Versões publicadas</h2>
+    <table class="versoes">
+      <thead>
+        <tr><th scope="col">Versão</th><th scope="col">Municípios</th><th scope="col">Arquivos</th><th scope="col">Tamanho</th><th scope="col">Manifesto</th></tr>
+      </thead>
+      <tbody>
+{{VERSOES}}
+      </tbody>
+    </table>
+    <p class="aviso"><b>De onde vêm esses números.</b> Eles são calculados a partir do <code>manifesto.json</code> de cada versão no momento da publicação, não digitados à mão. O tamanho é a soma dos arquivos comprimidos; o manifesto não entra na conta. Uma versão publicada não muda: correção no índice sai em um caminho novo (<code>v2</code>, <code>v3</code>), e por isso os arquivos são servidos com cache de um ano.</p>
+  </section>
+
+  <section aria-labelledby="t-uso">
+    <h2 id="t-uso">Como usar</h2>
+    <p>O caminho normal é pela biblioteca, que lê o manifesto, baixa o município pedido e confere o sha256 de cada arquivo.</p>
+<pre class="code" tabindex="0" aria-label="Trecho de código: uso do Candeia"><span class="c">// npm install candeia  (versão {{VERSAO_PACOTE}} na data desta publicação)</span>
+<span class="k">import</span> { criarGeocodificador } <span class="k">from</span> <span class="s">"candeia"</span>;
+
+<span class="k">const</span> geo = <span class="a">criarGeocodificador</span>({
+  base: <span class="s">"https://dados.lucasrikelmi.dev/cnefe2022/{{VERSAO_ATUAL}}/"</span>,
+});
+<span class="k">const</span> r = <span class="k">await</span> geo.<span class="a">geocodificar</span>(<span class="s">"Rua 8, Qd 21 Lt 4"</span>, {
+  municipio: <span class="s">"5208707"</span>, <span class="c">// código IBGE do município</span>
+});</pre>
+    <p>Quem preferir pode espelhar os arquivos no próprio servidor e apontar <code>base</code> para lá. A licença permite, com atribuição.</p>
+  </section>
+
+  <section aria-labelledby="t-formato">
+    <h2 id="t-formato">Formato</h2>
+    <p>Tudo é JSON comprimido com gzip. Os caminhos abaixo são relativos à pasta da versão, por exemplo <code>/cnefe2022/{{VERSAO_ATUAL}}/</code>.</p>
+    <div class="linhas">
+      <div class="linha"><span class="mono">Manifesto</span><span><code>manifesto.json</code>: para cada município, o tipo (único ou fatiado), a contagem de entradas e de vias, e o nome, o tamanho e o sha256 de cada arquivo.</span></div>
+      <div class="linha"><span class="mono">Município</span><span><code>&lt;UF&gt;/&lt;código IBGE&gt;.json.gz</code>: um dicionário que vai da via para a lista de pontos dela.</span></div>
+      <div class="linha"><span class="mono">Município grande</span><span><code>&lt;UF&gt;/&lt;código IBGE&gt;/index.json.gz</code> com o índice de vias, mais fatias <code>fNNN.json.gz</code>. Cada via fica inteira em uma só fatia, então a consulta baixa o índice e a fatia da via pedida.</span></div>
+      <div class="linha"><span class="mono">Campos</span><span>Via, tipo de logradouro, número, quadra e lote, localidade, CEP, coordenada, nível da coordenada e a contagem de pontos repetidos.</span></div>
+      <div class="linha"><span class="mono">Fora do índice</span><span>Nome de estabelecimento, complemento de unidade (apartamento, sala) e qualquer outro campo do CNEFE.</span></div>
+    </div>
+    <p class="aviso"><b>Cliente fora do navegador.</b> Os arquivos <code>.gz</code> são servidos sem <code>Content-Encoding</code>, para que o hash seja conferido sobre os bytes comprimidos. A Cloudflare barra assinaturas genéricas de cliente, como a do <code>urllib</code> do Python: mande um <code>User-Agent</code> próprio. O CORS é liberado para qualquer origem.</p>
+  </section>
+
+  <section aria-labelledby="t-licenca">
+    <h2 id="t-licenca">Fonte e licença</h2>
+    <p>O índice é distribuído sob a <a href="https://creativecommons.org/licenses/by/4.0/deed.pt-br">Creative Commons Atribuição 4.0 Internacional (CC BY 4.0)</a>. Quem copiar ou republicar os arquivos, ou uma derivação deles, deve citar as duas fontes:</p>
+    <blockquote>Dados: IBGE, Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE), Censo Demográfico 2022. Índice: Candeia (https://github.com/LucasRikelmi/candeia), CC BY 4.0.</blockquote>
+    <p>Usar o geocodificador para consultar endereços não exige atribuição. O código do Candeia tem licença própria (MIT).</p>
+    <p class="aviso"><b>Sobre os termos do CNEFE.</b> O IBGE não publicou uma licença específica para o CNEFE 2022. O que foi conferido, as fontes e os limites dessa conferência estão em <a href="https://github.com/LucasRikelmi/candeia/blob/main/DADOS.md">DADOS.md</a>. Se o IBGE publicar um termo específico, ele prevalece. O IBGE não endossa este projeto nem os resultados do geocodificador.</p>
+  </section>
+
+  <section aria-labelledby="t-limites">
+    <h2 id="t-limites">Limites</h2>
+    <ul class="lista">
+      <li><b>É um retrato de 2022.</b> Endereço criado ou renomeado depois do Censo não está aqui.</li>
+      <li><b>Só o que o CNEFE tem.</b> Endereço que o cadastro não registrou não é encontrado, e erro do cadastro vira erro do índice.</li>
+      <li><b>Sem coordenada de centróide.</b> Pontos cuja coordenada no CNEFE é um centróide, e não a posição do endereço, foram descartados (níveis 5 e 6 de <code>NV_GEO_COORD</code>).</li>
+      <li><b>Índice não é resultado.</b> A precisão de uma consulta depende do motor. As medições e as limitações delas estão no <a href="https://github.com/LucasRikelmi/candeia#readme">README</a> do repositório.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap rodape mono">
+    <span>Candeia, por <a href="https://lucasrikelmi.dev/">Lucas Rikelmi</a></span>
+    <span><a href="https://github.com/LucasRikelmi/candeia/issues">Relatar um problema</a></span>
+  </div>
+</footer>
+</body>
+</html>
