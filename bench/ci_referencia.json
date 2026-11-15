@@ -1,47 +1,47 @@
 {
-  "indice": "cnefe2022/v1",
-  "grupos": {
-    "A digitacao": {
-      "n": 1206,
-      "ate_100m": 80.4,
-      "acima_1km": 6.7,
-      "mediana_m": 0,
-      "erro_dentro_do_raio": 92.6
-    },
-    "A limpa": {
-      "n": 1320,
-      "ate_100m": 81.1,
-      "acima_1km": 6.1,
-      "mediana_m": 0,
-      "erro_dentro_do_raio": 92.8
-    },
-    "A numero_omitido": {
-      "n": 908,
-      "ate_100m": 52.3,
-      "acima_1km": 3.6,
-      "mediana_m": 92,
-      "erro_dentro_do_raio": 79.4
-    },
-    "A sem_bairro_cep": {
-      "n": 1320,
-      "ate_100m": 76.6,
-      "acima_1km": 11,
-      "mediana_m": 0,
-      "erro_dentro_do_raio": 92
-    },
-    "A sem_virgula": {
-      "n": 908,
-      "ate_100m": 97.2,
-      "acima_1km": 0.6,
-      "mediana_m": 0,
-      "erro_dentro_do_raio": 98.7
-    },
-    "B limpa": {
-      "n": 1320,
-      "ate_100m": 68.4,
-      "acima_1km": 10.6,
-      "mediana_m": 22,
-      "erro_dentro_do_raio": 76.7
-    }
+ "indice": "cnefe2022/v1",
+ "grupos": {
+  "A digitacao": {
+   "n": 1206,
+   "ate_100m": 81.3,
+   "acima_1km": 7,
+   "mediana_m": 0,
+   "erro_dentro_do_raio": 92.8
+  },
+  "A limpa": {
+   "n": 1320,
+   "ate_100m": 82.8,
+   "acima_1km": 6.1,
+   "mediana_m": 0,
+   "erro_dentro_do_raio": 93.2
+  },
+  "A numero_omitido": {
+   "n": 908,
+   "ate_100m": 58.6,
+   "acima_1km": 3.5,
+   "mediana_m": 84,
+   "erro_dentro_do_raio": 80.3
+  },
+  "A sem_bairro_cep": {
+   "n": 1320,
+   "ate_100m": 79.3,
+   "acima_1km": 10.8,
+   "mediana_m": 0,
+   "erro_dentro_do_raio": 92.7
+  },
+  "A sem_virgula": {
+   "n": 908,
+   "ate_100m": 97.2,
+   "acima_1km": 0.6,
+   "mediana_m": 0,
+   "erro_dentro_do_raio": 98.7
+  },
+  "B limpa": {
+   "n": 1320,
+   "ate_100m": 68.6,
+   "acima_1km": 10.7,
+   "mediana_m": 22,
+   "erro_dentro_do_raio": 76.6
   }
+ }
 }

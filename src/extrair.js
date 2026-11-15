@@ -64,8 +64,12 @@ export function extrairEntidades(enderecoCru) {
   const idxVirg = cru.indexOf(",");
   if (idxVirg >= 0) {
     const pos = cru.slice(idxVirg + 1).trim().split(/[\s,]+/)[0] || "";
-    if (/^\d{1,5}$/.test(pos)) numero = pos.replace(/^0+/, "") || "0";
+    // Candeia — "125A"/"125-B" valem como 125 (o índice guarda só o número) e o CNEFE tem números
+    // de porta com mais de 5 dígitos (medidor, matrícula), que antes eram ignorados.
+    const mPos = pos.match(/^(\d{1,9})(?:-?[a-z])?$/i);
+    if (mPos) numero = mPos[1].replace(/^0+/, "") || "0";
   }
+  const numeroPos = numero;
 
   // 1b) Km — endereço rural sem numeração urbana (ex.: "BR 153, KM 540, s/n",
   // "RODOVIA GO-222 KM 5,5"). Extraído do texto CRU (antes de normalizeBase,
@@ -210,7 +214,52 @@ export function extrairEntidades(enderecoCru) {
   if (lote == null && loteCasa != null) lote = loteCasa;
 
   return { tipo, via, viaCruzamento, quadra, lote, numero, km, viaSemNumero, numeroSemVirgula,
-    viaEstruturada: viaEstruturada && viaEstruturada !== via ? viaEstruturada : null };
+    viaEstruturada: viaEstruturada && viaEstruturada !== via ? viaEstruturada : null,
+    literais: _literais(cru, idxVirg), _pos: _depoisDaVirgula(cru, idxVirg, numeroPos) };
+}
+
+// Candeia — leituras LITERAIS do trecho antes da vírgula, para quando a limpeza acima desmonta um
+// nome de via que é exatamente o que está escrito. No CNEFE há logradouros chamados "L 08",
+// "QUADRA 35", "28 QD 36", "KM 44", "BR156" e "SITIO PANTANO" (tipo SITIO), que a extração lia como
+// lote, quadra, km, rodovia ou palavra repetida; e tipos fora de TIPOS_VIA ("RIO", "VILA",
+// "AGROVILA", "LUGAREJO", "1A TRAVESSA DA RUA") ficavam colados no nome. Cada leitura separa os k
+// primeiros tokens como tipo (k = 0: sem tipo) e deixa o resto intacto. geocodificar() só usa uma
+// leitura quando o resto é uma chave do índice (e, com tipo, quando a via tem pontos desse tipo).
+export const LITERAL_MAX_TIPO = 4;
+export function _literais(cru, idxVirg) {
+  // Duas grafias: com as abreviações expandidas e como veio (o CNEFE também grava "CEL", "DR").
+  const cruNorm = normalizeBase(idxVirg >= 0 ? cru.slice(0, idxVirg) : cru);
+  let expandido = cruNorm;
+  for (const [re, rep] of ABREV) expandido = expandido.replace(re, rep);
+  const out = [], visto = new Set();
+  for (const texto of expandido === cruNorm ? [cruNorm] : [expandido, cruNorm]) {
+    const t = texto.replace(/\s+(?:s\s*\/\s*n|sn|sem numero)$/, "").split(" ").filter(Boolean);
+    for (let k = Math.min(LITERAL_MAX_TIPO, t.length - 1); k >= 0; k--) {
+      const via = extensoParaNumeral(t.slice(k).join(" "));
+      const tp = k ? t.slice(0, k).join(" ") : null;
+      if (!via || visto.has(tp + "|" + via)) continue;
+      visto.add(tp + "|" + via);
+      out.push({ k, tp, via });
+    }
+  }
+  return out;
+}
+
+// Quadra, lote e número lidos só do trecho depois da vírgula: é o que sobra de complemento quando o
+// trecho antes da vírgula inteiro é nome de via (leitura literal).
+function _depoisDaVirgula(cru, idxVirg, numeroPos) {
+  const pos = { quadra: null, lote: null, numero: numeroPos };
+  if (idxVirg < 0) return pos;
+  const resto = normalizeBase(cru.slice(idxVirg + 1));
+  resto.replace(_RE_QUADRA_EXT, (_, n) => { if (pos.quadra == null) pos.quadra = normNum(n); });
+  _RE_QUADRA_EXT.lastIndex = 0;
+  resto.replace(_RE_LOTE_EXT, (_, n) => { if (pos.lote == null) pos.lote = normNum(n); });
+  _RE_LOTE_EXT.lastIndex = 0;
+  if (pos.numero == null) {
+    const mN = resto.match(/\bn[o]?\s*(\d{1,9})\b/);
+    if (mN) pos.numero = mN[1].replace(/^0+/, "") || "0";
+  }
+  return pos;
 }
 
 const _ABREV_ESTRUTURA = [
