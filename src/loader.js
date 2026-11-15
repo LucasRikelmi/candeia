@@ -122,6 +122,8 @@ export function criarGeocodificador({ base, fetch: _fetch = globalThis.fetch, ve
       const { viaKey } = est.ruas[v] ? { viaKey: v } : _resolverVia(v, est.ruas, est.cod, optsResolver);
       if (viaKey && est.indice.vias[viaKey]) fatias.add(est.indice.vias[viaKey][0]);
     }
+    // Leitura literal: só vale como chave exata, e o motor precisa dos pontos para conferir o tipo.
+    for (const l of q.literais) if (est.indice.vias[l.via]) fatias.add(est.indice.vias[l.via][0]);
     await carregarFatias(est, fatias);
 
     // O motor só usa pontos do CEP fora da via escolhida em dois casos: via não encontrada (#17) e

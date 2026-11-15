@@ -58,7 +58,7 @@ const r = await geo.geocodificar("Rua 8, Qd 21 Lt 4", {
 
 Município pequeno é um arquivo só. Município grande baixa o índice de vias e só a fatia da via pedida: no benchmark, uma consulta fria em São Paulo baixa ~1,3 MB e a seguinte na mesma via não baixa nada. O loader confere o sha256 de cada arquivo contra o manifesto. A página `exemplo/index.html` mostra o uso no navegador. Fora do navegador, passe um `fetch` com `User-Agent` próprio, por exemplo `criarGeocodificador({ base, fetch: (u) => fetch(u, { headers: { "User-Agent": "meu-sistema/1.0" } }) })`: a Cloudflare barra assinaturas genéricas de cliente, como a do Python (ver [docs/PUBLICACAO.md](docs/PUBLICACAO.md)).
 
-Medido no benchmark (cenário com o endereço no índice, variante limpa; rodada 9): 74,5% até 100 m no geral e 92,9% com número de porta; com erro de digitação no nome, 73,7%. Verde acerta até 100 m em 99,8% dos casos. Endereço sem número fica em ~38%, limitado pela extensão da via, e o `raio` diz isso. Rua que não existe na cidade volta vermelho (centro do município) em 83% dos casos; no resto, casa com uma rua de nome parecido, e a cor e o `raio` mostram a incerteza.
+Medido no benchmark (cenário com o endereço no índice, variante limpa; rodada 10): 77,7% até 100 m no geral e 94,9% com número de porta; com erro de digitação no nome, 75,6%. Verde acerta até 100 m em 99,9% dos casos. Endereço sem número fica em ~44%, limitado pela extensão da via, e o `raio` diz isso. Rua que não existe na cidade volta vermelho (centro do município) em 83% dos casos; no resto, casa com uma rua de nome parecido, e a cor e o `raio` mostram a incerteza.
 
 Fluxo de uma consulta:
 
@@ -93,24 +93,28 @@ Comparação nas mesmas 66 mil consultas (≤100 m: fração de respostas a até
 
 | grupo | ≤100 m Candeia (maior é melhor) | ≤100 m geocodebr (maior é melhor) | >1 km Candeia (menor é melhor) | >1 km geocodebr (menor é melhor) |
 |---|---|---|---|---|
-| endereço limpo | 75,8% | 73,1% | 8,0% | 8,1% |
-| com número de porta | 93,2% | 92,5% | 1,8% | 1,8% |
-| quadra e lote | 91,9% | 58,1% | 1,6% | 2,4% |
-| sem número | 34,0% | 30,1% | 22,9% | 23,4% |
-| sem bairro e CEP | 70,9% | 67,8% | 13,3% | 16,2% |
-| erro de digitação no nome | 74,9% | 74,1% | 7,7% | 7,2% |
-| erro dentro da margem declarada, ou até 100 m (`raio` × `desvio_metros`, limpo) | 91,7% | 93,7% | — | — |
+| endereço limpo | 79,0% | 73,1% | 7,0% | 8,1% |
+| com número de porta | 95,0% | 92,5% | 1,0% | 1,8% |
+| quadra e lote | 94,9% | 58,1% | 0,5% | 2,4% |
+| sem número | 40,2% | 30,1% | 21,6% | 23,4% |
+| sem bairro e CEP | 74,6% | 67,8% | 11,6% | 16,2% |
+| erro de digitação no nome | 76,8% | 74,1% | 7,7% | 7,2% |
+| erro dentro da margem declarada, ou até 100 m (`raio` × `desvio_metros`, limpo) | 92,9% | 93,7% | — | — |
+
+Pareado (até 100 m em um e não no outro): só Candeia 6.030, só geocodebr 2.383. Coluna do Candeia da rodada 10; a do geocodebr é a mesma execução de antes.
 
 Leitura:
 
-- Com número de porta os dois empatam: a diferença (0,7 ponto) está dentro do ruído de uma amostra desse tamanho. A vantagem do Candeia no "endereço limpo" vem quase toda de quadra e lote e de sem número.
+- Com número de porta a diferença passou de 0,7 para 2,5 pontos. Ela vem da leitura literal de nomes de via que parecem complemento ("L 08", "QUADRA 35") e de tipos fora da lista ("RIO", "VILA"), que a rodada 10 corrigiu olhando os erros desta mesma amostra (ver limites).
 - A vantagem do Candeia em quadra e lote vem de o geocodebr não ter campo para quadra e lote: ele recebeu só o logradouro. É uma diferença de escopo, não de qualidade do casamento, e são só 627 consultas.
-- Sem bairro e CEP o Candeia erra menos acima de 1 km (13,3% contra 16,2%).
-- Com erro de digitação, a primeira medição deu vantagem ao geocodebr (74,1% contra 72,7%): ele usava o número de porta quando a rua só casava por semelhança, e o Candeia não. Depois da correção (rodada 9) o Candeia passa a 74,9% até 100 m, mas o geocodebr ainda erra menos acima de 1 km (7,2% contra 7,7%).
-- O geocodebr também é mais honesto sobre a própria margem: o erro fica dentro do `desvio_metros` que ele declara em 93,7% dos casos, contra 91,7% do `raio` do Candeia.
+- Sem número, os dois devolvem um ponto da via. O Candeia passou a devolver o ponto mais ocupado do miolo do trecho, e o gabarito é sorteado dos próprios endereços: parte dos 10 pontos de diferença é esse critério casando com o jeito de sortear.
+- Sem bairro e CEP o Candeia erra menos acima de 1 km (11,6% contra 16,2%).
+- Com erro de digitação o Candeia acerta mais até 100 m (76,8% contra 74,1%), mas o geocodebr ainda erra menos acima de 1 km (7,2% contra 7,7%).
+- O geocodebr continua mais honesto sobre a própria margem: o erro fica dentro do `desvio_metros` que ele declara em 93,7% dos casos, contra 92,9% do `raio` do Candeia.
 
 Limites desta comparação:
 
+- O Candeia foi ajustado nesta amostra e o geocodebr não: as correções da rodada 10 saíram da leitura dos erros destes mesmos endereços, e o critério do ponto sem número foi escolhido entre seis variações medidas aqui. A diferença numa amostra nova tende a ser menor.
 - O gabarito sai do CNEFE, a mesma base dos dois motores. Isso favorece quem reproduz o CNEFE com fidelidade e não diz nada sobre endereço fora dele.
 - As variantes com erro foram geradas pelo benchmark do Candeia, que também escolheu os grupos.
 - O geocodebr recebeu os campos já separados. Na prática, quem usa o geocodebr precisa separar o endereço antes, e o Candeia recebe o texto livre: aqui o geocodebr teve essa ajuda.

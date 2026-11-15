@@ -205,6 +205,54 @@ Quando o número pedido não está no índice, o motor caía no eixo da rua (8.1
 
 O cenário A não muda (≤0,2 ponto). Sobram 102 interpolações no A em via exata mas homônima, com 61% acima de 1 km; amarelo >1 km vai de 2,3% para 2,4%. Calibração regerada.
 
+### Rodada 10: diagnóstico por causa, leitura literal e ponto do eixo
+
+Ponto de partida (cenário A, consulta limpa, 19.800 endereços): 74,5% até 100 m e 9,1% acima de 1 km. Cada uma das 5.047 respostas a mais de 100 m foi classificada pela causa, comparando a via escolhida com a via do gabarito e contando, na via certa, os pontos que a consulta não consegue distinguir do gabarito (mesmo tipo, número, quadra, lote, bairro e CEP):
+
+| causa | respostas | % do total | acima de 1 km |
+|---|---|---|---|
+| sem número de porta: eixo da via, e o trecho tem pontos indistinguíveis a mais de 100 m | 3.767 | 19,0% | 1.270 |
+| número (ou quadra e lote) repetido em pontos distantes da mesma via | 674 | 3,4% | 127 |
+| via não casou e a resposta veio do CEP | 256 | 1,3% | 164 |
+| via errada (outra chave do índice) | 228 | 1,2% | 169 |
+| número de porta com mais de 5 dígitos, ignorado | 79 | 0,4% | 31 |
+| vermelho (via não extraída) | 43 | 0,2% | 40 |
+
+Leitura: 88% do erro é falta de informação na consulta (não há número, ou o mesmo número existe em mais de um ponto com os mesmos atributos) e não some com mudança no motor. Os 12% restantes eram defeito de leitura da consulta, com peso desproporcional no erro acima de 1 km (404 de 1.801).
+
+Defeito de leitura. O CNEFE tem logradouros cujo nome parece complemento ("L 08", "QUADRA 35", "28 QD 36", "KM 44", "BR156", tipo SITIO com nome "SITIO PANTANO") e tipos fora da lista do motor ("RIO", "VILA", "AGROVILA", "LUGAREJO", "1A TRAVESSA DA RUA"). A extração lia lote, quadra, km ou rodovia onde havia nome, ou deixava o tipo colado no nome. Adotado: a extração devolve também as leituras literais do trecho antes da vírgula (os k primeiros tokens como tipo, k de 0 a 4, o resto intacto) e o motor usa uma delas só quando o resto é chave exata do índice e, se separou um tipo, a via tem pontos desse tipo. Entre "rio madeira" (rua) e "madeira" (tipo RIO), decide o número de porta, depois o CEP, depois a quantidade de pontos. Número de porta aceita letra colada ("125A") e até 9 dígitos.
+
+Ponto do eixo. Sem número, o motor devolvia o medoide do trecho (ponto real mais próximo do centroide). Testado: trocar pelo ponto com mais endereços num raio R, na via inteira ou só no miolo (os pontos mais próximos do medoide). Variante com número omitido, respostas pelo eixo:
+
+| ponto devolvido | até 100 m | até 200 m | acima de 1 km | mediana | erro médio (teto 5 km) |
+|---|---|---|---|---|---|
+| medoide | 51,7% | 71,7% | 5,4% | 94 m | 294 m |
+| mais denso em 100 m, via inteira | 59,1% | 71,6% | 6,6% | 80 m | 310 m |
+| mais denso em 200 m, via inteira | 52,5% | 75,9% | 6,3% | 93 m | 303 m |
+| mais denso em 100 m, miolo de 75% | 59,1% | 71,6% | 6,5% | 80 m | 310 m |
+| mais denso em 100 m, miolo de 50% | 58,8% | 72,2% | 6,2% | 80 m | 302 m |
+| mais denso em 100 m, miolo de 30% | 57,5% | 72,4% | 5,8% | 83 m | 295 m |
+
+A densidade na via inteira ganha mais no limiar de 100 m, mas é ganho de limiar: até 200 m fica igual, o erro médio e o acima de 1 km pioram, e o raio de 200 m troca o ganho de lugar. Adotado o miolo de 30% (`MIOLO_QUANTIL`), que mantém o erro médio e limita a piora acima de 1 km a 0,4 ponto nessa variante. O gabarito é sorteado do próprio CNEFE, então "onde há mais endereços" coincide com "onde há mais gabaritos": fora da amostra o ganho vale na medida em que as consultas reais se distribuem como os endereços.
+
+Resultado no recorte inteiro (antes → depois), com a tabela de confiança regerada:
+
+| grupo | até 100 m | acima de 1 km | erro médio (teto 5 km) |
+|---|---|---|---|
+| A limpa | 74,5 → 77,7% | 9,1 → 8,1% | 358 → 302 m |
+| A limpa, com número | 92,9 → 94,9% | 2,1 → 1,1% | |
+| A limpa, sem número | 38,4 → 43,9% | 22,9 → 21,8% | |
+| A número omitido | 50,9 → 57,4% | 6,1 → 5,8% | 321 → 295 m |
+| A sem bairro e CEP | 69,6 → 73,3% | 14,5 → 12,8% | 591 → 505 m |
+| A abreviada | 79,3 → 81,5% | 5,9 → 5,4% | 230 → 205 m |
+| A digitação | 73,7 → 75,6% | 8,7 → 8,8% | 352 → 346 m |
+| A sem vírgula | 92,1 → 92,3% | 2,4 → 2,4% | 100 → 101 m |
+| B limpa (ponto fora do índice) | 60,8 → 62,5% | 13,5 → 12,9% | 539 → 501 m |
+
+Pareado, até 100 m: só depois 4.610, só antes 1.304. Rua inexistente (cenário N): vermelho em 14.306 de 17.333 antes e depois. Respostas vermelhas no cenário A: 482 → 22.
+
+O que continua em aberto: endereço sem número (43,9%) depende de informação que o índice v1 não guarda. O CNEFE traz complemento e nome de estabelecimento ("SITIO BOA VISTA", "FAZENDA X"), que é como o endereço rural é dito; indexar isso exige um índice v2 e um benchmark com consultas que usem o complemento.
+
 ## Loader do índice publicado (PR #7)
 
 `criarGeocodificador({ base, fetch?, verificarHash?, maxMunicipios? })` lê o manifesto uma vez e carrega cada município sob demanda (LRU de 20 municípios).
