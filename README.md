@@ -58,7 +58,7 @@ const r = await geo.geocodificar("Rua 8, Qd 21 Lt 4", {
 
 Município pequeno é um arquivo só. Município grande baixa o índice de vias e só a fatia da via pedida: no benchmark, uma consulta fria em São Paulo baixa ~1,3 MB e a seguinte na mesma via não baixa nada. O loader confere o sha256 de cada arquivo contra o manifesto. A página `exemplo/index.html` mostra o uso no navegador. Fora do navegador, passe um `fetch` com `User-Agent` próprio, por exemplo `criarGeocodificador({ base, fetch: (u) => fetch(u, { headers: { "User-Agent": "meu-sistema/1.0" } }) })`: a Cloudflare barra assinaturas genéricas de cliente, como a do Python (ver [docs/PUBLICACAO.md](docs/PUBLICACAO.md)).
 
-Medido no benchmark (cenário com o endereço no índice, variante limpa; rodada 9): 74,5% até 100 m no geral e 92,9% com número de porta; com erro de digitação no nome, 73,7%. Verde acerta até 100 m em 99,8% dos casos. Endereço sem número fica em ~38%, limitado pela extensão da via, e o `raio` diz isso. Rua que não existe na cidade volta vermelho (centro do município) em 83% dos casos; no resto, casa com uma rua de nome parecido, e a cor e o `raio` mostram a incerteza.
+Medido no benchmark (cenário com o endereço no índice, variante limpa; rodada 10): 77,7% até 100 m no geral e 94,9% com número de porta; com erro de digitação no nome, 75,6%. Verde acerta até 100 m em 99,9% dos casos. Endereço sem número fica em ~44%, limitado pela extensão da via, e o `raio` diz isso. Rua que não existe na cidade volta vermelho (centro do município) em 83% dos casos; no resto, casa com uma rua de nome parecido, e a cor e o `raio` mostram a incerteza.
 
 Fluxo de uma consulta:
 
@@ -88,6 +88,8 @@ Cada UF escreve endereço de um jeito. Na amostra inicial, o DF tem 96% dos regi
 ## Relação com outros projetos
 
 O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE, funciona offline e retorna nível de precisão e desvio em metros. É mais maduro e cobre geocodificação reversa e busca por CEP. A proposta do Candeia é outra: rodar em JavaScript (navegador e Node), baixar só o município consultado e tratar quadra e lote.
+
+A coluna do Candeia abaixo é da rodada 9. A rodada 10 mudou o motor (ver [docs/ARQUITETURA.md](docs/ARQUITETURA.md)) e a comparação ainda não foi refeita com ela.
 
 Comparação nas mesmas 66 mil consultas (≤100 m: fração de respostas a até 100 m do ponto certo; >1 km: fração que errou por mais de 1 km) do benchmark (geocodebr 0.7.0, entrada em campos separados; scripts em `bench/geocodebr/`). Os dois usam o CNEFE 2022 e o gabarito também vem dele, então mede o que cada motor faz com a mesma entrada, não a acurácia no mundo real.
 
