@@ -71,6 +71,50 @@ export function _resolverVia(viaAlvo, ruas, codMunicipio, opts) {
   return resultado;
 }
 
+// Candeia — escolhe a leitura literal da consulta (q.literais), se alguma valer mais que a via já
+// resolvida. Uma leitura vale quando o nome é chave do índice e, se separou um tipo, a via tem
+// pontos desse tipo (tipo de TIPOS_VIA vale mesmo sem ponto: quem digita troca "Rua" por "Avenida").
+// Contra uma via já casada exata: se a consulta tinha tipo conhecido, a literal difere porque a
+// limpeza tirou algo do nome ("L 08", "28 QD 36") e ganha quando o tipo confere; se não tinha
+// ("RIO MADEIRA": via "rio madeira" ou via "madeira" do tipo RIO?), ganha a leitura em que o número
+// de porta existe, depois a que tem ponto no CEP informado e, no empate, a que tem mais pontos. Se a
+// via casada nem é o texto da consulta (sobra da limpeza), a literal com tipo conferido ganha.
+export function _escolherLiteral(q, ruas, viaKey, viaScore, cepNorm) {
+  if (!q.literais || !q.literais.length) return null;
+  const numero = q._pos.numero;
+  const medir = (lista, tp) => {
+    let n = 0, id = 0;
+    for (const c of lista) {
+      if (tp != null && c.tp !== tp) continue;
+      n++;
+      if (numero != null && c.n === numero) id |= 2;
+      if (cepNorm && c.c === cepNorm) id |= 1;
+    }
+    return { n, id };
+  };
+  let melhor = null;
+  for (const c of q.literais) {
+    const lista = ruas[c.via];
+    if (!lista) continue;
+    let m = medir(lista, c.tp);
+    const confere = c.tp == null ? false : m.n > 0;
+    if (c.tp != null && !m.n) {
+      if (c.k !== 1 || !TIPOS_VIA.has(c.tp)) continue;
+      m = medir(lista, null);
+    }
+    const cand = { ...c, ...m, confere };
+    if (!melhor || (cand.confere !== melhor.confere ? cand.confere : cand.id !== melhor.id ? cand.id > melhor.id : cand.n > melhor.n)) melhor = cand;
+  }
+  if (!melhor) return null;
+  if (viaScore < 1) return melhor;
+  if (melhor.via === viaKey) return null;
+  if (!melhor.confere) return null;
+  if (q.tipo != null || !q.literais.some((l) => l.k === 0 && l.via === viaKey)) return melhor;
+  const atual = medir(ruas[viaKey] || [], null);
+  if (melhor.id !== atual.id) return melhor.id > atual.id ? melhor : null;
+  return melhor.n > atual.n ? melhor : null;
+}
+
 // Candeia — `confianca`: P(erro <= 100 m) e P(erro > 1 km) da cor + faixa de raio deste
 // resultado, medidas no benchmark (ver src/calibracao.js).
 export function geocodificar(consulta, indiceMunicipios, opts = {}) {
@@ -94,6 +138,26 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
   if (!ruas) return falha("vermelho", "Município não indexado");
 
   const q = extrairEntidades(enderecoCru);
+  const cepNorm  = String(cepConsulta || "").replace(/\D/g, "");
+
+  // --- Resolução da via: O(1) exato → fuzzy com blocking + cache ---
+  let { viaKey, viaScore } = _resolverVia(q.via, ruas, codMunicipio, opts);
+
+  // Candeia — leitura literal (ver _literais em extrair.js). Entra quando a via extraída não casou
+  // exato, ou quando casou mas a leitura literal explica o texto inteiro como "tipo + nome" de uma
+  // via que existe com esse tipo.
+  const lit = _escolherLiteral(q, ruas, viaKey, viaScore, cepNorm);
+  if (lit) {
+    viaKey = lit.via;
+    viaScore = 1;
+    q.via = lit.via;
+    q.tipo = lit.tp;
+    q.quadra = q._pos.quadra;
+    q.lote = q._pos.lote;
+    q.numero = q._pos.numero;
+    q.km = null;
+    q.viaSemNumero = q.viaEstruturada = null;
+  }
   if (!q.via) return falha("vermelho", "Via não extraída da consulta");
 
   // Opção B: raio de outlier maior pra rodovia. `tipo` cobre "BR 153"/
@@ -113,7 +177,6 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
   // classificador do núcleo quando os dois lados usam a MESMA grafia.
   let bairroNorm = normalizeBase(bairro || "");
   for (const [re, rep] of ABREV) bairroNorm = bairroNorm.replace(re, rep);
-  const cepNorm  = String(cepConsulta || "").replace(/\D/g, "");
 
   // #19 — Ver _extrairQLDeBairro: campo Bairro preenchido com quadra/lote em
   // vez de nome de bairro. Reaproveita como quadra/lote (só quando o próprio
@@ -135,8 +198,6 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
     }
   }
 
-  // --- Resolução da via: O(1) exato → fuzzy com blocking + cache ---
-  let { viaKey, viaScore } = _resolverVia(q.via, ruas, codMunicipio, opts);
   let cruzamentoUsado = false;
 
   // Candeia — número sem vírgula: fica com "via sem o último número + número de porta"
