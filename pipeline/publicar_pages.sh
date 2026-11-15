@@ -16,6 +16,8 @@
 #   apagar a pasta.
 # - Monta a pasta de envio com hardlinks (não copia 1 GB, não altera o índice):
 #     <envio>/cnefe2022/<versão>/...   e   <envio>/_headers (CORS e cache)
+#   Na raiz de <envio> vão a página de apresentação (index.html, gerada por montar_pagina.mjs com
+#   os números do manifesto) e o 404.html.
 # - wrangler login abre o navegador para entrar na conta Cloudflare (sem token para copiar).
 # - Cada deploy SUBSTITUI o site inteiro. Para publicar uma v2 sem derrubar a v1, a pasta de envio
 #   precisa conter as duas: o script mantém as versões já montadas em <envio>/cnefe2022/.
@@ -88,7 +90,16 @@ cat > "$ENVIO/_headers" <<'EOF'
 /cnefe2022/*
   Access-Control-Allow-Origin: *
   Cache-Control: public, max-age=31536000, immutable
+/
+  Content-Security-Policy: default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
 EOF
+
+# --- página da raiz (index.html, 404.html, css, fontes) ------------------------------------------
+# Os números da página vêm dos manifestos em $ENVIO/cnefe2022/v*/ (ver montar_pagina.mjs). Ela não
+# tem script nem estilo inline, por isso a CSP acima pode negar tudo que não é do próprio site.
+node "$AQUI/montar_pagina.mjs" "$ENVIO"
 
 N=$(find "$ENVIO" -type f | wc -l)
 MAIOR=$(find "$ENVIO" -type f -printf '%s\n' | sort -n | tail -1)
