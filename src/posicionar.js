@@ -37,7 +37,8 @@ export function outlierParaVia(ehRodovia) {
   return ehRodovia ? OUTLIER_M_RODOVIA : OUTLIER_M;
 }
 
-// #7 — Geomedoid: ponto REAL do cluster mais próximo do centróide ponderado.
+// #7 — Geomedoid: ponto REAL do cluster mais próximo do centróide ponderado
+// (Candeia: depois ajustado para o ponto mais ocupado do miolo, ver _medoidDoPool).
 // Substitui a média ponderada pura, que pode cair fora da via em ruas
 // longas, sinuosas ou com múltiplos clusters (ex.: ruas em "L").
 //
@@ -68,6 +69,9 @@ export function raioIncerteza(coord, pool) {
   const ds = pool.map((c) => _haversine(coord.lat, coord.lon, c.la ?? c.lat, c.lo ?? c.lon)).sort((a, b) => a - b);
   return Math.round(ds[Math.floor(RAIO_QUANTIL * (ds.length - 1))]);
 }
+
+export const DENSIDADE_RAIO_M = 100;
+export const MIOLO_QUANTIL = 0.3;
 
 function _poolGeomedoid(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo) {
   // 1) Pool inicial: apenas candidatos com coordenadas válidas
@@ -141,12 +145,43 @@ function _medoidDoPool(pool, ehRodovia) {
   const cLat = la / w, cLon = lo / w;
 
   // 6) Medoid = candidato real mais próximo do centróide (sempre on-street)
-  let best = null, bestDist = Infinity;
+  const lat = (c) => c.la ?? c.lat, lon = (c) => c.lo ?? c.lon;
+  let medoid = null, bestDist = Infinity;
   for (const c of cluster) {
-    const d = _haversine(c.la ?? c.lat, c.lo ?? c.lon, cLat, cLon);
-    if (d < bestDist) { bestDist = d; best = c; }
+    const d = _haversine(lat(c), lon(c), cLat, cLon);
+    if (d < bestDist) { bestDist = d; medoid = c; }
   }
-  return best ? { lat: best.la ?? best.lat, lon: best.lo ?? best.lon } : null;
+  if (!medoid) return null;
+
+  // 7) Candeia — entre os pontos do miolo do trecho (os MIOLO_QUANTIL mais próximos do medoid), fica
+  // o que tem mais endereços a até DENSIDADE_RAIO_M: sem número de porta, o endereço procurado tem
+  // mais chance de estar onde a via é mais ocupada do que no seu centro geométrico. Medido no
+  // benchmark (número omitido): até 100 m 51,7 → 57,5%, mediana 94 → 83 m, erro médio igual; a
+  // densidade na via inteira (sem o miolo) dava 59,1%, mas piorava o erro médio e o acima de 1 km.
+  if (cluster.length < 3) return { lat: lat(medoid), lon: lon(medoid) };
+  const dm = cluster.map((c) => _haversine(lat(c), lon(c), lat(medoid), lon(medoid)));
+  const limite = dm.slice().sort((a, b) => a - b)[Math.floor(MIOLO_QUANTIL * (dm.length - 1))];
+  const R = DENSIDADE_RAIO_M;
+  const dLa = R / 111320, dLo = R / (111320 * Math.cos((lat(medoid) * Math.PI) / 180));
+  const grade = new Map(); // células de R metros: os vizinhos de um ponto estão nas 9 em volta
+  const celula = (c) => [Math.floor(lat(c) / dLa), Math.floor(lon(c) / dLo)];
+  for (const c of cluster) {
+    const [i, j] = celula(c), chave = i + "," + j;
+    const g = grade.get(chave);
+    if (g) g.push(c); else grade.set(chave, [c]);
+  }
+  let best = medoid, bestN = -1, bestD = Infinity;
+  cluster.forEach((c, idx) => {
+    if (dm[idx] > limite) return;
+    const [i, j] = celula(c);
+    let n = 0;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+      const g = grade.get((i + a) + "," + (j + b));
+      if (g) for (const o of g) if (_haversine(lat(c), lon(c), lat(o), lon(o)) <= R) n++;
+    }
+    if (n > bestN || (n === bestN && dm[idx] < bestD)) { bestN = n; bestD = dm[idx]; best = c; }
+  });
+  return { lat: lat(best), lon: lon(best) };
 }
 
 // Candeia — número que não está no índice: interpola entre o maior número menor e o menor número
