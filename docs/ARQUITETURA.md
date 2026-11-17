@@ -253,6 +253,24 @@ Pareado, até 100 m: só depois 4.610, só antes 1.304. Rua inexistente (cenári
 
 O que continua em aberto: endereço sem número (43,9%) depende de informação que o índice v1 não guarda. O CNEFE traz complemento e nome de estabelecimento ("SITIO BOA VISTA", "FAZENDA X"), que é como o endereço rural é dito; indexar isso exige um índice v2 e um benchmark com consultas que usem o complemento.
 
+### Rodada 11: grafia canônica de letra+número e "S/N" escrito
+
+**Índice v2 medido e descartado.** Em AC, SE, PI e SC (só leitura no Parquet), sem número é 21–43% dos endereços, e só 18–21% deles têm algum nome; 12% têm um nome que distingue o ponto no município. O nome vem quase todo de `DSC_ESTABELECIMENTO` e descreve atividade ("FABRICA DE TIJOLOS"); "SITIO X" no complemento é menos de 1%. O índice cresceria ~2%, mas a consulta sem número do benchmark não traz nome, então nada mudaria nela, e o campo traz nomes de pessoas.
+
+**Ponto só pelos S/N, sem sinal na consulta: descartado.** Usar só as entradas sem número da via quando a consulta não tem número leva o sem número de 43,9 para 46,8% até 100 m, mas o número omitido cai de 57,4 para 46,5% (a margem declarada, de 79 para 61%). A consulta sem número não diz qual dos dois é.
+
+**"S/N" escrito.** Quando a consulta termina em "S/N", "SN" ou "sem número", o ponto sai só das entradas S/N da via. Variante nova no benchmark (`sn_explicito`, endereços S/N sem quadra/lote, n = 6.038): 38,5 → 41,6% até 100 m, acima de 1 km 24,0 → 23,0%, mediana 215 → 187 m. Sem o "S/N", nada muda.
+
+**Grafia canônica.** A chave de via guarda o nome como o CNEFE grava, então "c2", "c 2" e "c-2" eram vias diferentes (e o próprio CNEFE grava a mesma rua de dois jeitos em 0,6% das vias, 2% das entradas). Quando a chave exata não existe, a busca tenta a forma canônica: fronteira entre 1–2 letras e dígitos sem espaço nem hífen, e sem zero à esquerda. É a ideia do analisador de números de porta do Nominatim (`token_analysis/housenumbers.py`: fronteira letra/dígito com espaço opcional), aplicada ao nome da via e só na busca, sem regerar o índice. Em 345 endereços da amostra com esse padrão (fora rodovias), até 100 m:
+
+| como a consulta escreve | antes | depois |
+|---|---|---|
+| igual ao CNEFE | 84,6% | 84,6% |
+| espaço trocado ("T28" ↔ "T 28") | 68,4% | 82,3% |
+| com hífen ("T-28") | 49,3% | 82,6% |
+
+No benchmark completo e no do CI, todas as variantes ficaram iguais à rodada 10 (as consultas do benchmark usam a grafia do CNEFE).
+
 ## Loader do índice publicado (PR #7)
 
 `criarGeocodificador({ base, fetch?, verificarHash?, maxMunicipios? })` lê o manifesto uma vez e carrega cada município sob demanda (LRU de 20 municípios).

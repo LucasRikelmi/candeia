@@ -72,6 +72,8 @@ export function variantes(r) {
   if (ab !== via) out.abreviada = { end: ab + complemento(r), bairro: r.bairro, cep: r.cep };
   const err = comErro(r.nome, r.id);
   if (err) out.digitacao = { end: [r.tipo, r.titulo, err].filter(Boolean).join(" ") + complemento(r), bairro: r.bairro, cep: r.cep };
+  // Endereço S/N escrito com o "S/N" (sem quadra/lote): separa de número omitido.
+  if (!temNumero(r) && !r.quadra && !r.lote) out.sn_explicito = { end: `${via}, S/N`, bairro: r.bairro, cep: r.cep };
   out.sem_bairro_cep = { end: out.limpa.end, bairro: "", cep: "" };
   return out;
 }

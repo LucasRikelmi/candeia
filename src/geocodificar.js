@@ -29,9 +29,41 @@ export const _COLOR_ORDER   = ["verde", "azul", "amarelo", "laranja", "vermelho"
 // completa, com cache) tanto pra via principal quanto, em caso de falha,
 // pra via de cruzamento de um endereço de esquina (ver chamada em
 // geocodificar). Comportamento idêntico ao bloco original, só parametrizado.
+// Candeia — grafia canônica do nome da via para letra+número: "c2", "c 2" e "c-2" são a mesma via,
+// e "09" é "9". O índice guarda a chave como o CNEFE grava (e ele grava a mesma rua de mais de um
+// jeito), então a forma canônica só é usada na busca, quando a chave exata não existe. Mesma ideia do
+// analisador de números de porta do Nominatim (fronteira letra/dígito com espaço opcional), restrita
+// a 1–2 letras para não juntar palavras ("rua do 12" fica como está).
+export function _canonVia(via) {
+  return via
+    .replace(/\b0+(\d)/g, "$1")
+    .replace(/\b([a-z]{1,2})[ -](\d+)\b/g, "$1$2")
+    .replace(/\b(\d+)[ -]([a-z])\b/g, "$1$2");
+}
+const _mapasCanon = new WeakMap(); // ruas → Map(canônica → chave com mais entradas)
+export function _viaCanonica(ruas, via) {
+  if (!via) return null;
+  let mapa = _mapasCanon.get(ruas);
+  if (!mapa) {
+    mapa = new Map();
+    for (const k in ruas) {
+      const c = _canonVia(k), a = mapa.get(c);
+      if (!a || ruas[k].length > ruas[a].length) mapa.set(c, k);
+    }
+    _mapasCanon.set(ruas, mapa);
+  }
+  const hit = mapa.get(_canonVia(via));
+  if (hit && !ruas[hit]) { _mapasCanon.delete(ruas); return _viaCanonica(ruas, via); } // índice mudou
+  return hit || null;
+}
+
+export const _RE_SN_FINAL = /(?:^|[\s,])(?:s\s*\/\s*n[º°o]?|sn|sem\s+n[uú]mero)\s*$/i;
+
 export function _resolverVia(viaAlvo, ruas, codMunicipio, opts) {
   if (!viaAlvo) return { viaKey: null, viaScore: 0 };
   if (ruas[viaAlvo]) return { viaKey: viaAlvo, viaScore: 1 };
+  const canonica = _viaCanonica(ruas, viaAlvo);
+  if (canonica) return { viaKey: canonica, viaScore: 1 };
 
   const cache = opts.cache || null;
   const ck    = String(codMunicipio) + "|" + viaAlvo;
@@ -93,8 +125,12 @@ export function _escolherLiteral(q, ruas, viaKey, viaScore, cepNorm) {
     return { n, id };
   };
   let melhor = null;
-  for (const c of q.literais) {
-    const lista = ruas[c.via];
+  for (const c0 of q.literais) {
+    let c = c0, lista = ruas[c.via];
+    if (!lista) {
+      const h = _viaCanonica(ruas, c.via);
+      if (h) { c = { ...c0, via: h }; lista = ruas[h]; }
+    }
     if (!lista) continue;
     let m = medir(lista, c.tp);
     const confere = c.tp == null ? false : m.n > 0;
@@ -138,6 +174,8 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
   if (!ruas) return falha("vermelho", "Município não indexado");
 
   const q = extrairEntidades(enderecoCru);
+  // Candeia — "S/N" escrito na consulta: o endereço não tem número (não é número omitido).
+  const snExplicito = _RE_SN_FINAL.test(String(enderecoCru || "").trim());
   const cepNorm  = String(cepConsulta || "").replace(/\D/g, "");
 
   // --- Resolução da via: O(1) exato → fuzzy com blocking + cache ---
@@ -501,7 +539,7 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
       metodo = "interpolacao";
       motivo = `Número interpolado entre ${interp.vizinhos[0]} e ${interp.vizinhos[1]}`;
     } else {
-      ({ coord, raio } = geomedoidComRaio(pool, bairroNorm, q.quadra, ehRodovia, q.numero));
+      ({ coord, raio } = geomedoidComRaio(pool, bairroNorm, q.quadra, ehRodovia, q.numero, snExplicito));
     }
     if (!coord) { coord = { lat: m.c.la ?? m.c.lat, lon: m.c.lo ?? m.c.lon }; raio = null; }
     if (status === "amarelo" && raio != null && raio > RAIO_AMARELO_MAX) {
