@@ -31,9 +31,9 @@ export const _COLOR_ORDER   = ["verde", "azul", "amarelo", "laranja", "vermelho"
 // geocodificar). Comportamento idêntico ao bloco original, só parametrizado.
 // Candeia — grafia canônica do nome da via para letra+número: "c2", "c 2" e "c-2" são a mesma via,
 // e "09" é "9". O índice guarda a chave como o CNEFE grava (e ele grava a mesma rua de mais de um
-// jeito), então a forma canônica só é usada na busca, quando a chave exata não existe. Mesma ideia do
-// analisador de números de porta do Nominatim (fronteira letra/dígito com espaço opcional), restrita
-// a 1–2 letras para não juntar palavras ("rua do 12" fica como está).
+// jeito), então a forma canônica só é usada na busca, quando a chave exata não existe. A fronteira entre
+// letras e dígitos é tratada como espaço opcional, só para 1–2 letras, para não juntar palavras
+// ("rua do 12" fica como está).
 export function _canonVia(via) {
   return via
     .replace(/\b0+(\d)/g, "$1")

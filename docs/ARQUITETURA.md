@@ -261,7 +261,7 @@ O que continua em aberto: endereço sem número (43,9%) depende de informação 
 
 **"S/N" escrito.** Quando a consulta termina em "S/N", "SN" ou "sem número", o ponto sai só das entradas S/N da via. Variante nova no benchmark (`sn_explicito`, endereços S/N sem quadra/lote, n = 6.038): 38,5 → 41,6% até 100 m, acima de 1 km 24,0 → 23,0%, mediana 215 → 187 m. Sem o "S/N", nada muda.
 
-**Grafia canônica.** A chave de via guarda o nome como o CNEFE grava, então "c2", "c 2" e "c-2" eram vias diferentes (e o próprio CNEFE grava a mesma rua de dois jeitos em 0,6% das vias, 2% das entradas). Quando a chave exata não existe, a busca tenta a forma canônica: fronteira entre 1–2 letras e dígitos sem espaço nem hífen, e sem zero à esquerda. É a ideia do analisador de números de porta do Nominatim (`token_analysis/housenumbers.py`: fronteira letra/dígito com espaço opcional), aplicada ao nome da via e só na busca, sem regerar o índice. Em 345 endereços da amostra com esse padrão (fora rodovias), até 100 m:
+**Grafia canônica.** A chave de via guarda o nome como o CNEFE grava, então "c2", "c 2" e "c-2" eram vias diferentes (e o próprio CNEFE grava a mesma rua de dois jeitos em 0,6% das vias, 2% das entradas). Quando a chave exata não existe, a busca tenta a forma canônica: fronteira entre 1–2 letras e dígitos sem espaço nem hífen, e sem zero à esquerda. A fronteira letra/dígito é tratada como espaço opcional (normalizadores de endereço como o libpostal, MIT, têm opção equivalente), implementada aqui do zero, aplicada ao nome da via e só na busca, sem regerar o índice. Em 345 endereços da amostra com esse padrão (fora rodovias), até 100 m:
 
 | como a consulta escreve | antes | depois |
 |---|---|---|
