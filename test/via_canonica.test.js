@@ -16,6 +16,8 @@ const dic = {
   "9": linha("rua", 10, 6000),
   "24 a qd 103": linha("rua", 10, 9000),
   "do 12": linha("ramal", 10, 12000),
+  "central ii": linha("rua", 10, 15000),
+  "joao 23": linha("rua", 10, 18000),
   // via com numerados num trecho e S/N em outro
   "projetada": [...linha("rua", 10, 20000, 8), ...Array.from({ length: 3 }, (_, i) => p("rua", null, 24000 + i * 20))],
 };
@@ -51,4 +53,11 @@ test("S/N escrito leva o ponto para os endereços sem número; sem ele, nada mud
     assert.ok(r.coord.lon > -50 + 23900 / 109600, `${end}: ${r.coord.lon}`);
   }
   assert.ok(semNada.coord.lon < -50 + 23900 / 109600, `sem S/N: ${semNada.coord.lon}`);
+});
+
+test("romano no fim do nome escrito em algarismo e vice-versa", () => {
+  for (const [end, via] of [["RUA CENTRAL 2, 20", "central ii"], ["RUA JOAO XXIII, 20", "joao 23"]]) {
+    const r = geo(end);
+    assert.equal(r.viaKey, via, end);
+  }
 });

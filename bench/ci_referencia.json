@@ -6,28 +6,28 @@
    "ate_100m": 81.3,
    "acima_1km": 7,
    "mediana_m": 0,
-   "erro_dentro_do_raio": 92.8
+   "erro_dentro_do_raio": 95.6
   },
   "A limpa": {
    "n": 1320,
    "ate_100m": 82.8,
    "acima_1km": 6.1,
    "mediana_m": 0,
-   "erro_dentro_do_raio": 93.2
+   "erro_dentro_do_raio": 96.2
   },
   "A numero_omitido": {
    "n": 908,
    "ate_100m": 58.6,
    "acima_1km": 3.5,
    "mediana_m": 84,
-   "erro_dentro_do_raio": 80.3
+   "erro_dentro_do_raio": 89
   },
   "A sem_bairro_cep": {
    "n": 1320,
    "ate_100m": 79.3,
    "acima_1km": 10.8,
    "mediana_m": 0,
-   "erro_dentro_do_raio": 92.7
+   "erro_dentro_do_raio": 96.3
   },
   "A sem_virgula": {
    "n": 908,
@@ -41,7 +41,7 @@
    "ate_100m": 68.6,
    "acima_1km": 10.7,
    "mediana_m": 22,
-   "erro_dentro_do_raio": 76.6
+   "erro_dentro_do_raio": 80.1
   }
  }
 }

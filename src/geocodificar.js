@@ -12,6 +12,7 @@ export const LOTE_ADJ   = 2;    // |diff| de lote para "ao lado"
 // Candeia — eixo de rua com raio de incerteza acima disto não é amarelo: no benchmark, raio > 500 m
 // concentra quase todo erro > 1 km (50% deles contra 1% com raio <= 500 m, endereços sem número).
 export const RAIO_AMARELO_MAX = 500;
+export const FATOR_RAIO_EIXO = 1.15;
 // Candeia — via achada por semelhança usa o ponto do número de porta, se ele existir nela: com nota
 // >= GATE_FORTE sempre; entre GATE_FUZZY e GATE_FORTE só se bairro ou CEP também conferem.
 // Candeia — verde exige que o número (ou quadra+lote) não se repita longe na mesma via.
@@ -34,6 +35,17 @@ export const _COLOR_ORDER   = ["verde", "azul", "amarelo", "laranja", "vermelho"
 // jeito), então a forma canônica só é usada na busca, quando a chave exata não existe. A fronteira entre
 // letras e dígitos é tratada como espaço opcional, só para 1–2 letras, para não juntar palavras
 // ("rua do 12" fica como está).
+const _ROMANOS = ["", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv",
+  "xv", "xvi", "xvii", "xviii", "xix", "xx", "xxi", "xxii", "xxiii", "xxiv", "xxv", "xxvi", "xxvii", "xxviii", "xxix", "xxx"];
+const _ROMANO_N = new Map(_ROMANOS.map((r, i) => [r, i]).filter(([r]) => r.length >= 2)); // "i", "v", "x" podem ser letra
+export function _romanoTrocado(via) {
+  const t = via.split(" ");
+  if (t.length < 2) return null;
+  const u = t[t.length - 1];
+  if (/^\d+$/.test(u) && +u >= 2 && +u <= 30) return [...t.slice(0, -1), _ROMANOS[+u]].join(" ");
+  if (_ROMANO_N.has(u)) return [...t.slice(0, -1), String(_ROMANO_N.get(u))].join(" ");
+  return null;
+}
 export function _canonVia(via) {
   return via
     .replace(/\b0+(\d)/g, "$1")
@@ -54,7 +66,12 @@ export function _viaCanonica(ruas, via) {
   }
   const hit = mapa.get(_canonVia(via));
   if (hit && !ruas[hit]) { _mapasCanon.delete(ruas); return _viaCanonica(ruas, via); } // índice mudou
-  return hit || null;
+  if (hit) return hit;
+  // Número romano no fim do nome escrito em algarismo, ou o contrário ("central 2" = "central ii").
+  // Só aceita a grafia alternativa se ela existir no índice do município. Validado numa amostra de
+  // municípios não usados no ajuste: 13,0 → 66,7% até 100 m nesses endereços (n = 54).
+  const alt = _romanoTrocado(via);
+  return alt ? mapa.get(_canonVia(alt)) || null : null;
 }
 
 export const _RE_SN_FINAL = /(?:^|[\s,])(?:s\s*\/\s*n[º°o]?|sn|sem\s+n[uú]mero)\s*$/i;
@@ -592,6 +609,12 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
       }
     }
   }
+
+  // Candeia — o raio do ponto da rua (quantil RAIO_QUANTIL das distâncias do trecho) cobria só ~75%
+  // dos erros. Ajustado na amostra do benchmark (alvo: 85% no eixo) e validado numa amostra de
+  // municípios não usados: cobertura da consulta limpa 89,7 → 93,5%. Aplicado depois da cor, que
+  // continua decidida pelo raio do trecho.
+  if ((metodo === "eixo" || metodo === "quadra") && raio != null) raio = Math.round(raio * FATOR_RAIO_EIXO);
 
   return {
     status, motivo, viaScore, viaKey,

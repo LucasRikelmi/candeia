@@ -271,6 +271,18 @@ O que continua em aberto: endereço sem número (43,9%) depende de informação 
 
 No benchmark completo e no do CI, todas as variantes ficaram iguais à rodada 10 (as consultas do benchmark usam a grafia do CNEFE).
 
+### Rodada 12: margem do ponto da rua, romano ↔ número e validação fora da amostra
+
+Ajustes feitos na amostra do benchmark (132 municípios) e validados numa amostra nova: 104 municípios nunca usados, 4 por UF sorteados por hash com semente fixa (DF fica de fora: só tem Brasília), 150 endereços por município com o mesmo filtro, 14.314 endereços depois de tirar códigos repetidos. O critério foi registrado antes de rodar qualquer motor.
+
+**Raio do ponto da rua.** O raio do eixo (quantil 0,8 das distâncias no trecho) cobria só ~75% dos erros desse método. `FATOR_RAIO_EIXO = 1,15` (alvo: 85% no eixo, ajustado na amostra antiga) é aplicado depois da cor, que continua decidida pelo raio do trecho. Erro dentro do raio, consulta limpa: 91,1 → 94,3% (ajuste) e 89,7 → 93,5% (validação). Nenhum acerto muda. A tabela de confiança foi regerada.
+
+**Romano ↔ número no fim do nome.** "Rua Central 2" acha "central ii" (e o contrário), só se a grafia alternativa existir no município; "i", "v" e "x" ficam de fora porque podem ser letra. Endereços com romano no fim do nome, escritos em algarismo: 13,0 → 66,7% até 100 m na validação (n = 54) e 23,0 → 69,7% no ajuste (n = 66).
+
+**Hipóteses medidas e descartadas.** Desempate por CEP e bairro no número repetido: 449 de 675 erros desse tipo têm todas as cópias com o mesmo CEP e bairro, ganho possível ≈0,1 ponto. Rua errada com nome parecido: 1.591 de 1.595 erros acima de 1 km na consulta limpa estão na rua certa (rua longa), então uma checagem de CEP não teria o que corrigir.
+
+**Validação fora da amostra (consulta limpa, até 100 m).** O Candeia cai de 77,7% (amostra de ajuste) para 74,3%; nas variantes padrão, o resultado é idêntico ao da versão anterior à rodada 11, porque as mudanças só agem em grafia diferente do CNEFE e em "S/N" escrito.
+
 ## Loader do índice publicado (PR #7)
 
 `criarGeocodificador({ base, fetch?, verificarHash?, maxMunicipios? })` lê o manifesto uma vez e carrega cada município sob demanda (LRU de 20 municípios).
