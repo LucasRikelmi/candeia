@@ -353,5 +353,5 @@ document.querySelector(".chips").addEventListener("click", (ev) => {
   if (b) preencher(b.dataset);
 });
 
-// Troca de tema do sistema com um resultado na tela: redesenha o ponto com as cores do tema novo.
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (ultimo) desenhar(ultimo.r); });
+// Troca de tema (sistema ou seletor, via tema.js) com um resultado na tela: redesenha o ponto com as cores do tema novo.
+document.addEventListener("themechange", () => { if (ultimo) desenhar(ultimo.r); });

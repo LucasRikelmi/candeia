@@ -12,8 +12,16 @@
 <meta property="og:url" content="https://candeia.lucasrikelmi.dev/exemplo/">
 <meta property="og:title" content="Candeia | Demonstração do geocodificador">
 <meta property="og:description" content="Geocodificação de endereços brasileiros a partir do CNEFE 2022, rodando inteira no navegador.">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8fa">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0e12">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8fa" data-default="#f7f8fa">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0e12" data-default="#0b0e12">
+<script>
+  // Tema escolhido no portfólio (cookie do domínio lucasrikelmi.dev), aplicado antes da primeira pintura.
+  (function () {
+    var r = document.documentElement; r.classList.add("js");
+    var c = document.cookie.match(/(?:^|; )tema=(light|dark)/);
+    if (c) r.dataset.theme = c[1];
+  })();
+</script>
 <link rel="icon" href="../pipeline/pagina/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="../pipeline/pagina/fontes/instrument-serif-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../pipeline/pagina/fontes/bricolage-grotesque-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -32,6 +40,7 @@
     <li><a href="https://www.npmjs.com/package/candeia">npm</a></li>
     <li><a href="https://dados.lucasrikelmi.dev/">Índice de dados</a></li>
   </ul>
+  <div class="tema" role="radiogroup" aria-label="Tema"></div>
 </nav>
 
 <header class="wrap cabeca">
@@ -146,6 +155,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+<script src="tema.js" defer></script>
 <script type="module" src="demo.js"></script>
 </body>
 </html>
