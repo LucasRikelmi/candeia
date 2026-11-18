@@ -2,7 +2,7 @@
 
 Geocodificação de endereços brasileiros que roda no seu próprio código, sem servidor, sem chave de API e sem custo por consulta.
 
-> **Status: v1.1.1.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). Instalação pelo npm (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Um benchmark de regressão roda no CI a cada PR.
+> **Status: v1.1.1.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). Instalação pelo npm (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md), e foram conferidos numa amostra nova de 104 municípios que nunca entraram no ajuste. O [motor híbrido](#motor-híbrido) (busca da via por chave canônica e grafias candidatas, "S/N" escrito e margem do ponto da rua) está na main do repositório e ainda não saiu numa versão do npm. Um benchmark de regressão roda no CI a cada PR.
 
 ## O problema
 
@@ -58,16 +58,31 @@ const r = await geo.geocodificar("Rua 8, Qd 21 Lt 4", {
 
 Município pequeno é um arquivo só. Município grande baixa o índice de vias e só a fatia da via pedida: no benchmark, uma consulta fria em São Paulo baixa ~1,3 MB e a seguinte na mesma via não baixa nada. O loader confere o sha256 de cada arquivo contra o manifesto. A página `exemplo/index.html` mostra o uso no navegador. Fora do navegador, passe um `fetch` com `User-Agent` próprio, por exemplo `criarGeocodificador({ base, fetch: (u) => fetch(u, { headers: { "User-Agent": "meu-sistema/1.0" } }) })`: a Cloudflare barra assinaturas genéricas de cliente, como a do Python (ver [docs/PUBLICACAO.md](docs/PUBLICACAO.md)).
 
-Medido no benchmark (cenário com o endereço no índice, variante limpa; rodada 10): 77,7% até 100 m no geral e 94,9% com número de porta; com erro de digitação no nome, 75,6%. Verde acerta até 100 m em 99,9% dos casos. Endereço sem número fica em ~44%, limitado pela extensão da via, e o `raio` diz isso. Rua que não existe na cidade volta vermelho (centro do município) em 83% dos casos; no resto, casa com uma rua de nome parecido, e a cor e o `raio` mostram a incerteza.
+Medido no benchmark (cenário com o endereço no índice, variante limpa; rodada 10): 77,7% até 100 m no geral e 94,9% com número de porta; com erro de digitação no nome, 75,6%. Verde acerta até 100 m em 99,9% dos casos. Endereço sem número fica em ~44%, limitado pela extensão da via, e o `raio` diz isso. Rua que não existe na cidade volta vermelho (centro do município) em 83% dos casos; no resto, casa com uma rua de nome parecido, e a cor e o `raio` mostram a incerteza. Numa amostra nova, de municípios que nunca entraram no ajuste, a consulta limpa cai para 74,3% até 100 m, e com número de porta fica em 96,0% (ver [Comparação numa amostra nova](#comparação-numa-amostra-nova)).
 
 Fluxo de uma consulta:
 
 1. **Normalização local.** Tipo da via, nome, número, quadra e lote são extraídos e padronizados.
 2. **Município** pelo código IBGE de 7 dígitos, informado por quem chama.
 3. **Download do arquivo do município** (ou do índice de vias e da fatia da via, nos grandes), ou leitura do que já está em memória.
-4. **Busca por token do nome da via**, para não comparar com todas as ruas da cidade.
+4. **Busca da via:** chave exata, depois chave canônica e grafias candidatas ([motor híbrido](#motor-híbrido)), depois busca por token do nome, para não comparar com todas as ruas da cidade.
 5. **Pontuação do nome** com Jaro-Winkler e Jaccard por tokens. Bairro e CEP desempatam ruas homônimas.
 6. **Refinamento por número, quadra e lote.** Sem número, o motor tenta interpolar entre vizinhos, depois cai para o eixo da via, o CEP e o centro do município. `metodo` diz até onde chegou e `raio` quanto o ponto pode estar longe.
+
+## Motor híbrido
+
+O índice guarda o nome da via como o CNEFE grava. O próprio CNEFE às vezes grava a mesma rua de mais de um jeito, e quem digita escreve de outro ("C-2" para "C2", "Rua Central 2" para "Central II"). A busca da via combina duas ideias: uma chave canônica única e, quando ela não basta, grafias candidatas conferidas no índice. Daí o nome. Cada etapa só roda se a anterior não achou a via:
+
+1. **Chave exata**, como o CNEFE grava.
+2. **Chave canônica:** letra+número sem espaço nem hífen (1 ou 2 letras, para não juntar palavras) e sem zero à esquerda. "C2", "C 2", "C-2" e "C 02" viram a mesma chave.
+3. **Grafia candidata:** número romano no fim do nome escrito em algarismo, ou o contrário, de 2 a 30 ("Rua Central 2" ↔ "Central II"). "I", "V" e "X" ficam de fora, porque podem ser letra. A candidata só é aceita se existir no índice do município. Se a cidade tem "Rua 2" e "Rua II" como ruas diferentes, vale a exata.
+
+Duas mudanças acompanham a busca:
+
+- **"S/N" escrito na consulta** ("S/N", "SN" ou "sem número" no fim): o ponto sai só dos endereços sem número da via, que costumam ficar em outro trecho. Sem o "S/N" escrito, nada muda, porque não dá para separar endereço sem número de número esquecido.
+- **Raio do ponto da rua 15% maior.** O raio cobria só ~75% dos erros desse método. O ponto não muda, só a margem declarada.
+
+Nada disso exige regerar o índice: tudo acontece na consulta. Nas consultas escritas como o CNEFE e sem "S/N", o ponto devolvido é idêntico ao do Candeia normal; muda só o `raio` do ponto da rua. Os números estão em [Comparação numa amostra nova](#comparação-numa-amostra-nova), e as medições, em `docs/ARQUITETURA.md` (rodadas 11 e 12).
 
 ## Dados
 
@@ -89,36 +104,50 @@ Cada UF escreve endereço de um jeito. Na amostra inicial, o DF tem 96% dos regi
 
 O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE, funciona offline e retorna nível de precisão e desvio em metros. É mais maduro e cobre geocodificação reversa e busca por CEP. A proposta do Candeia é outra: rodar em JavaScript (navegador e Node), baixar só o município consultado e tratar quadra e lote.
 
-Comparação nas mesmas 66 mil consultas (≤100 m: fração de respostas a até 100 m do ponto certo; >1 km: fração que errou por mais de 1 km) do benchmark (geocodebr 0.7.0, entrada em campos separados; scripts em `bench/geocodebr/`). Os dois usam o CNEFE 2022 e o gabarito também vem dele, então mede o que cada motor faz com a mesma entrada, não a acurácia no mundo real.
+### Comparação numa amostra nova
 
-| grupo | ≤100 m Candeia (maior é melhor) | ≤100 m geocodebr (maior é melhor) | >1 km Candeia (menor é melhor) | >1 km geocodebr (menor é melhor) |
+Três motores nos mesmos endereços: o geocodebr 0.7.0 (entrada em campos separados, `resolver_empates = TRUE`; scripts em `bench/geocodebr/`), o Candeia normal (v1.1.1, a versão publicada) e o Candeia com o [motor híbrido](#motor-híbrido). A amostra tem 14.314 endereços de 104 municípios que nunca foram usados para ajustar o Candeia, 4 por UF sorteados por hash com semente fixa (o DF fica de fora: só tem Brasília, que já estava na amostra de ajuste). O critério foi registrado antes de rodar qualquer motor. ≤100 m é a fração de respostas a até 100 m do ponto certo (maior é melhor); >1 km é a fração que errou por mais de 1 km, incluindo as sem resposta (menor é melhor). O intervalo de 95% da diferença vem de reamostrar municípios (1.000 vezes).
+
+| grupo | n | ≤100 m geocodebr | ≤100 m Candeia normal | ≤100 m Candeia híbrido | diferença híbrido − geocodebr (IC 95%) | >1 km geocodebr | >1 km Candeia (normal e híbrido) |
+|---|---|---|---|---|---|---|---|
+| endereço limpo | 14.314 | 66,9% | 74,3% | 74,3% | +7,4 [+6,1; +8,9] | 10,8% | 9,0% |
+| com número de porta | 8.635 | 91,4% | 96,0% | 96,0% | +4,5 [+3,0; +6,5] | 2,4% | 0,9% |
+| sem número | 5.679 | 29,6% | 41,3% | 41,3% | +11,7 [+10,2; +13,4] | 23,6% | 21,2% |
+| número omitido | 8.635 | 51,0% | 59,6% | 59,6% | +8,6 [+7,3; +10,0] | 6,5% | 5,4% |
+| erro de digitação no nome | 12.990 | 67,8% | 73,0% | 73,0% | +5,2 [+3,7; +6,8] | 9,4% | 9,3% |
+| sem bairro e CEP | 14.314 | 62,5% | 70,1% | 70,1% | +7,6 [+6,2; +9,1] | 18,1% | 13,4% |
+| "S/N" escrito na consulta | 5.516 | 29,1% | 39,8% | 43,0% | +13,9 [+12,2; +15,9] | 24,0% | normal 21,8%, híbrido 20,8% |
+| erro dentro da margem declarada (`desvio_metros` × `raio`, limpo) | 14.314 | 92,7% | 89,7% | 93,5% | — | — | — |
+
+Grafias diferentes da do CNEFE (variantes desenhadas para problemas conhecidos do Candeia; amostras pequenas, sem intervalo):
+
+| como a consulta escreve | n | ≤100 m geocodebr | ≤100 m Candeia normal | ≤100 m Candeia híbrido |
 |---|---|---|---|---|
-| endereço limpo | 79,0% | 73,1% | 7,0% | 8,1% |
-| com número de porta | 95,0% | 92,5% | 1,0% | 1,8% |
-| quadra e lote | 94,9% | 58,1% | 0,5% | 2,4% |
-| sem número | 40,2% | 30,1% | 21,6% | 23,4% |
-| sem bairro e CEP | 74,6% | 67,8% | 11,6% | 16,2% |
-| erro de digitação no nome | 76,8% | 74,1% | 7,7% | 7,2% |
-| erro dentro da margem declarada, ou até 100 m (`raio` × `desvio_metros`, limpo) | 92,9% | 93,7% | — | — |
+| letra+número com espaço trocado ("T28" ↔ "T 28") | 171 | 24,6% | 51,5% | 60,8% |
+| letra+número com hífen ("T-28") | 171 | 38,0% | 18,7% | 60,2% |
+| romano no fim do nome escrito em algarismo ("Central 2" para "Central II") | 54 | 48,1% | 13,0% | 66,7% |
 
-Pareado (até 100 m em um e não no outro): só Candeia 6.030, só geocodebr 2.383. Coluna do Candeia da rodada 10; a do geocodebr é a mesma execução de antes.
+Pareado, na consulta limpa: só o Candeia acerta até 100 m em 1.379 endereços, só o geocodebr em 321.
 
 Leitura:
 
-- Com número de porta a diferença passou de 0,7 para 2,5 pontos. Ela vem da leitura literal de nomes de via que parecem complemento ("L 08", "QUADRA 35") e de tipos fora da lista ("RIO", "VILA"), que a rodada 10 corrigiu olhando os erros desta mesma amostra (ver limites).
-- A vantagem do Candeia em quadra e lote vem de o geocodebr não ter campo para quadra e lote: ele recebeu só o logradouro. É uma diferença de escopo, não de qualidade do casamento, e são só 627 consultas.
-- Sem número, os dois devolvem um ponto da via. O Candeia passou a devolver o ponto mais ocupado do miolo do trecho, e o gabarito é sorteado dos próprios endereços: parte dos 10 pontos de diferença é esse critério casando com o jeito de sortear.
-- Sem bairro e CEP o Candeia erra menos acima de 1 km (11,6% contra 16,2%).
-- Com erro de digitação o Candeia acerta mais até 100 m (76,8% contra 74,1%), mas o geocodebr ainda erra menos acima de 1 km (7,2% contra 7,7%).
-- O geocodebr continua mais honesto sobre a própria margem: o erro fica dentro do `desvio_metros` que ele declara em 93,7% dos casos, contra 92,9% do `raio` do Candeia.
+- Nas variantes padrão, o Candeia normal e o híbrido dão o mesmo resultado endereço por endereço. O híbrido só muda a resposta quando a consulta escreve a via de outro jeito que o CNEFE ou escreve "S/N", e muda o tamanho do `raio` do ponto da rua.
+- Fora da amostra de ajuste, a vantagem do Candeia não encolheu: na amostra antiga era 79,0 × 73,1% na consulta limpa, aqui é 74,3 × 66,9%. Os dois motores caíram, então os municípios novos são mais difíceis para ambos.
+- A margem declarada era o único ponto em que o geocodebr ganhava com folga (92,7 × 89,7%). O híbrido aumenta em 15% o raio do ponto da rua e passa a 93,5%. Nenhum acerto muda, só a margem fica mais honesta.
+- Em erro de digitação, os dois empatam acima de 1 km (9,3 × 9,4%).
+- Por UF, o Candeia fica à frente em todas na consulta limpa, mas em PE e SP o intervalo cruza zero, ou seja, é empate estatístico. A maior diferença é em RO (75,3 × 46,2%).
+- Nos 321 endereços em que só o geocodebr acerta, 216 são do ponto da rua (consulta sem número) e 105 são número de porta repetido em pontos distantes da mesma via.
 
 Limites desta comparação:
 
-- O Candeia foi ajustado nesta amostra e o geocodebr não: as correções da rodada 10 saíram da leitura dos erros destes mesmos endereços, e o critério do ponto sem número foi escolhido entre seis variações medidas aqui. A diferença numa amostra nova tende a ser menor.
-- O gabarito sai do CNEFE, a mesma base dos dois motores. Isso favorece quem reproduz o CNEFE com fidelidade e não diz nada sobre endereço fora dele.
-- As variantes com erro foram geradas pelo benchmark do Candeia, que também escolheu os grupos.
-- O geocodebr recebeu os campos já separados. Na prática, quem usa o geocodebr precisa separar o endereço antes, e o Candeia recebe o texto livre: aqui o geocodebr teve essa ajuda.
+- O gabarito sai do CNEFE, e o Candeia indexa o CNEFE ponto a ponto, enquanto o geocodebr usa uma base agregada e padronizada. Isso favorece o Candeia por construção e não diz nada sobre endereço fora do CNEFE.
+- As variantes com erro foram geradas pelo benchmark do Candeia, que também escolheu os grupos. As variantes de grafia e romano foram desenhadas olhando para problemas do Candeia.
+- O fator do raio e a regra de romano foram ajustados na amostra antiga, mas a decisão de mexer na margem veio de ver o resultado do geocodebr nesta amostra.
+- O geocodebr recebeu os campos já separados. O Candeia recebe o texto livre. Aqui o geocodebr teve essa ajuda.
+- Quadra e lote não entram nesta tabela: o geocodebr não tem campo para eles (na amostra antiga, com só o logradouro, ficou em 58,1% contra 94,9%).
 - Não foram medidos tempo, memória nem tamanho de download.
+
+A comparação anterior, na amostra em que o Candeia foi ajustado (66 mil consultas de 132 municípios), está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md#comparação-com-o-geocodebr-na-amostra-de-ajuste).
 
 ## Roadmap
 
@@ -132,7 +161,9 @@ Limites desta comparação:
 - [x] Benchmark de regressão no CI
 - [ ] Validação com pontos conferidos em campo
 - [x] Calibração de confiança por UF: medida e descartada, piora fora da amostra (ver abaixo)
-- [x] Comparação com o geocodebr nos mesmos endereços (ver [Relação com outros projetos](#relação-com-outros-projetos))
+- [x] Comparação com o geocodebr nos mesmos endereços, também numa amostra nova (ver [Relação com outros projetos](#relação-com-outros-projetos))
+- [x] Motor híbrido: grafia canônica, romano ↔ número, "S/N" escrito e margem do ponto da rua (ver [Motor híbrido](#motor-híbrido))
+- [ ] Script da amostra nova no repositório, para reproduzir a validação fora da amostra
 - [x] Pacote no npm
 - [x] Guia de contribuição com casos de teste por UF ([CONTRIBUTING.md](CONTRIBUTING.md))
 

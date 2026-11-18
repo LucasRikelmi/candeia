@@ -13,3 +13,5 @@ O [geocodebr](https://ipeagit.github.io/geocodebr) (IPEA) é um pacote R. Os doi
    `node bench/geocodebr/comparar.mjs --dados <pasta do recorte> --geocodebr saida_geocodebr.csv --candeia <resultados_candeia.json>`
 
 A entrada vai em campos separados (logradouro, número, CEP, bairro), que é como o geocodebr recebe. Quadra e lote não têm campo no geocodebr: nesses endereços vai só o logradouro.
+
+A tabela do README usa uma amostra nova (104 municípios fora do benchmark, 4 por UF, sorteio por hash com semente fixa), rodada com estes mesmos scripts. O script que sorteia essa amostra ainda não está no repositório. A comparação na amostra do benchmark está em `docs/ARQUITETURA.md`.

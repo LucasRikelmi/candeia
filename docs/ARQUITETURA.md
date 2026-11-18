@@ -283,6 +283,45 @@ Ajustes feitos na amostra do benchmark (132 municípios) e validados numa amostr
 
 **Validação fora da amostra (consulta limpa, até 100 m).** O Candeia cai de 77,7% (amostra de ajuste) para 74,3%; nas variantes padrão, o resultado é idêntico ao da versão anterior à rodada 11, porque as mudanças só agem em grafia diferente do CNEFE e em "S/N" escrito.
 
+**Motor híbrido.** As rodadas 11 e 12 juntas formam o que o README chama de motor híbrido: a busca da via tenta a chave exata, depois a chave canônica, depois a grafia candidata (romano ↔ número) aceita só se existir no índice, mais o "S/N" escrito e o raio maior do ponto da rua. Uma versão de teste com mais grafias candidatas (separar letra e número sem limite de letras, "cond12" → "cond 12") não ganhou nada nas duas amostras e ficou de fora.
+
+**Comparação com o geocodebr na amostra nova** (até 100 m, geocodebr / Candeia normal = v1.1.1 / Candeia híbrido): limpa 66,9 / 74,3 / 74,3; "S/N" escrito 29,1 / 39,8 / 43,0; letra+número com espaço trocado 24,6 / 51,5 / 60,8 e com hífen 38,0 / 18,7 / 60,2 (n = 171); romano em algarismo 48,1 / 13,0 / 66,7 (n = 54); erro dentro da margem declarada 92,7 / 89,7 / 93,5. Tabela completa, com intervalos e limites, no README. O script que sorteia a amostra nova ainda não está no repositório.
+
+### Comparação com o geocodebr na amostra de ajuste
+
+Substituída no README pela comparação numa amostra nova (rodada 12). Fica aqui como registro.
+
+Comparação nas mesmas 66 mil consultas (≤100 m: fração de respostas a até 100 m do ponto certo; >1 km: fração que errou por mais de 1 km) do benchmark (geocodebr 0.7.0, entrada em campos separados; scripts em `bench/geocodebr/`). Os dois usam o CNEFE 2022 e o gabarito também vem dele, então mede o que cada motor faz com a mesma entrada, não a acurácia no mundo real.
+
+| grupo | ≤100 m Candeia (maior é melhor) | ≤100 m geocodebr (maior é melhor) | >1 km Candeia (menor é melhor) | >1 km geocodebr (menor é melhor) |
+|---|---|---|---|---|
+| endereço limpo | 79,0% | 73,1% | 7,0% | 8,1% |
+| com número de porta | 95,0% | 92,5% | 1,0% | 1,8% |
+| quadra e lote | 94,9% | 58,1% | 0,5% | 2,4% |
+| sem número | 40,2% | 30,1% | 21,6% | 23,4% |
+| sem bairro e CEP | 74,6% | 67,8% | 11,6% | 16,2% |
+| erro de digitação no nome | 76,8% | 74,1% | 7,7% | 7,2% |
+| erro dentro da margem declarada, ou até 100 m (`raio` × `desvio_metros`, limpo) | 92,9% | 93,7% | — | — |
+
+Pareado (até 100 m em um e não no outro): só Candeia 6.030, só geocodebr 2.383. Coluna do Candeia da rodada 10 (= v1.1.1); a do geocodebr é a mesma execução de antes. Nessas variantes, o motor híbrido (rodadas 11 e 12) dá o mesmo resultado; só muda a margem declarada, pelo raio maior do ponto da rua.
+
+Leitura:
+
+- Com número de porta a diferença passou de 0,7 para 2,5 pontos. Ela vem da leitura literal de nomes de via que parecem complemento ("L 08", "QUADRA 35") e de tipos fora da lista ("RIO", "VILA"), que a rodada 10 corrigiu olhando os erros desta mesma amostra (ver limites).
+- A vantagem do Candeia em quadra e lote vem de o geocodebr não ter campo para quadra e lote: ele recebeu só o logradouro. É uma diferença de escopo, não de qualidade do casamento, e são só 627 consultas.
+- Sem número, os dois devolvem um ponto da via. O Candeia passou a devolver o ponto mais ocupado do miolo do trecho, e o gabarito é sorteado dos próprios endereços: parte dos 10 pontos de diferença é esse critério casando com o jeito de sortear.
+- Sem bairro e CEP o Candeia erra menos acima de 1 km (11,6% contra 16,2%).
+- Com erro de digitação o Candeia acerta mais até 100 m (76,8% contra 74,1%), mas o geocodebr ainda erra menos acima de 1 km (7,2% contra 7,7%).
+- O geocodebr continua mais honesto sobre a própria margem: o erro fica dentro do `desvio_metros` que ele declara em 93,7% dos casos, contra 92,9% do `raio` do Candeia.
+
+Limites desta comparação:
+
+- O Candeia foi ajustado nesta amostra e o geocodebr não: as correções da rodada 10 saíram da leitura dos erros destes mesmos endereços, e o critério do ponto sem número foi escolhido entre seis variações medidas aqui. A diferença numa amostra nova tende a ser menor.
+- O gabarito sai do CNEFE, a mesma base dos dois motores. Isso favorece quem reproduz o CNEFE com fidelidade e não diz nada sobre endereço fora dele.
+- As variantes com erro foram geradas pelo benchmark do Candeia, que também escolheu os grupos.
+- O geocodebr recebeu os campos já separados. Na prática, quem usa o geocodebr precisa separar o endereço antes, e o Candeia recebe o texto livre: aqui o geocodebr teve essa ajuda.
+- Não foram medidos tempo, memória nem tamanho de download.
+
 ## Loader do índice publicado (PR #7)
 
 `criarGeocodificador({ base, fetch?, verificarHash?, maxMunicipios? })` lê o manifesto uma vez e carrega cada município sob demanda (LRU de 20 municípios).
