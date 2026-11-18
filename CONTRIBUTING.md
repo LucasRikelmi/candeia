@@ -56,6 +56,8 @@ Se a mudança altera o resultado de propósito:
 
 Mudança que só melhora a média e piora algum grupo precisa justificar a troca.
 
+Regra que saiu da leitura dos erros do benchmark tende a ganhar menos fora dele. Quando der, confira o ganho em municípios que não estão no `municipios.json` do recorte (gerado por `pipeline/amostrar_benchmark.py`), com o critério de sorteio definido antes de rodar (foi assim que o motor híbrido foi validado, ver `docs/ARQUITETURA.md`, rodada 12).
+
 ## Dados
 
 Arquivos do índice nunca entram por pull request: eles são gerados pelo `pipeline/` a partir do CNEFE. Correção de dado vem como mudança no pipeline, com a medição do efeito.

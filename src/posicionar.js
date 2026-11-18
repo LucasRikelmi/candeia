@@ -58,8 +58,15 @@ export function geomedoid(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo)
 // Pool com menos de RAIO_MIN_PONTOS pontos não diz a extensão da via: raio = null.
 export const RAIO_QUANTIL = 0.8;
 export const RAIO_MIN_PONTOS = 3;
-export function geomedoidComRaio(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo) {
-  const pool = _poolGeomedoid(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo);
+// snExplicito: a consulta disse "S/N". Aí o ponto sai só das entradas sem número da via: o S/N
+// (quase sempre rural) costuma ficar em outro trecho que os numerados. Sem o "S/N" escrito não dá
+// para separar de número omitido, e usar só os S/N piorava esse caso (57,4 → 46,5% até 100 m).
+export function geomedoidComRaio(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo, snExplicito = false) {
+  let pool = _poolGeomedoid(candidatos, bairroNorm, quadra, ehRodovia, numeroAlvo);
+  if (snExplicito && numeroAlvo == null && !ehRodovia) {
+    const sn = pool.filter((c) => c.n == null);
+    if (sn.length && sn.length < pool.length) pool = sn;
+  }
   const coord = _medoidDoPool(pool, ehRodovia);
   return { coord, raio: coord ? raioIncerteza(coord, pool) : null, pontos: pool.length };
 }

@@ -12,6 +12,7 @@ export const LOTE_ADJ   = 2;    // |diff| de lote para "ao lado"
 // Candeia — eixo de rua com raio de incerteza acima disto não é amarelo: no benchmark, raio > 500 m
 // concentra quase todo erro > 1 km (50% deles contra 1% com raio <= 500 m, endereços sem número).
 export const RAIO_AMARELO_MAX = 500;
+export const FATOR_RAIO_EIXO = 1.15;
 // Candeia — via achada por semelhança usa o ponto do número de porta, se ele existir nela: com nota
 // >= GATE_FORTE sempre; entre GATE_FUZZY e GATE_FORTE só se bairro ou CEP também conferem.
 // Candeia — verde exige que o número (ou quadra+lote) não se repita longe na mesma via.
@@ -29,9 +30,57 @@ export const _COLOR_ORDER   = ["verde", "azul", "amarelo", "laranja", "vermelho"
 // completa, com cache) tanto pra via principal quanto, em caso de falha,
 // pra via de cruzamento de um endereço de esquina (ver chamada em
 // geocodificar). Comportamento idêntico ao bloco original, só parametrizado.
+// Candeia — grafia canônica do nome da via para letra+número: "c2", "c 2" e "c-2" são a mesma via,
+// e "09" é "9". O índice guarda a chave como o CNEFE grava (e ele grava a mesma rua de mais de um
+// jeito), então a forma canônica só é usada na busca, quando a chave exata não existe. A fronteira entre
+// letras e dígitos é tratada como espaço opcional, só para 1–2 letras, para não juntar palavras
+// ("rua do 12" fica como está).
+const _ROMANOS = ["", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv",
+  "xv", "xvi", "xvii", "xviii", "xix", "xx", "xxi", "xxii", "xxiii", "xxiv", "xxv", "xxvi", "xxvii", "xxviii", "xxix", "xxx"];
+const _ROMANO_N = new Map(_ROMANOS.map((r, i) => [r, i]).filter(([r]) => r.length >= 2)); // "i", "v", "x" podem ser letra
+export function _romanoTrocado(via) {
+  const t = via.split(" ");
+  if (t.length < 2) return null;
+  const u = t[t.length - 1];
+  if (/^\d+$/.test(u) && +u >= 2 && +u <= 30) return [...t.slice(0, -1), _ROMANOS[+u]].join(" ");
+  if (_ROMANO_N.has(u)) return [...t.slice(0, -1), String(_ROMANO_N.get(u))].join(" ");
+  return null;
+}
+export function _canonVia(via) {
+  return via
+    .replace(/\b0+(\d)/g, "$1")
+    .replace(/\b([a-z]{1,2})[ -](\d+)\b/g, "$1$2")
+    .replace(/\b(\d+)[ -]([a-z])\b/g, "$1$2");
+}
+const _mapasCanon = new WeakMap(); // ruas → Map(canônica → chave com mais entradas)
+export function _viaCanonica(ruas, via) {
+  if (!via) return null;
+  let mapa = _mapasCanon.get(ruas);
+  if (!mapa) {
+    mapa = new Map();
+    for (const k in ruas) {
+      const c = _canonVia(k), a = mapa.get(c);
+      if (!a || ruas[k].length > ruas[a].length) mapa.set(c, k);
+    }
+    _mapasCanon.set(ruas, mapa);
+  }
+  const hit = mapa.get(_canonVia(via));
+  if (hit && !ruas[hit]) { _mapasCanon.delete(ruas); return _viaCanonica(ruas, via); } // índice mudou
+  if (hit) return hit;
+  // Número romano no fim do nome escrito em algarismo, ou o contrário ("central 2" = "central ii").
+  // Só aceita a grafia alternativa se ela existir no índice do município. Validado numa amostra de
+  // municípios não usados no ajuste: 13,0 → 66,7% até 100 m nesses endereços (n = 54).
+  const alt = _romanoTrocado(via);
+  return alt ? mapa.get(_canonVia(alt)) || null : null;
+}
+
+export const _RE_SN_FINAL = /(?:^|[\s,])(?:s\s*\/\s*n[º°o]?|sn|sem\s+n[uú]mero)\s*$/i;
+
 export function _resolverVia(viaAlvo, ruas, codMunicipio, opts) {
   if (!viaAlvo) return { viaKey: null, viaScore: 0 };
   if (ruas[viaAlvo]) return { viaKey: viaAlvo, viaScore: 1 };
+  const canonica = _viaCanonica(ruas, viaAlvo);
+  if (canonica) return { viaKey: canonica, viaScore: 1 };
 
   const cache = opts.cache || null;
   const ck    = String(codMunicipio) + "|" + viaAlvo;
@@ -93,8 +142,12 @@ export function _escolherLiteral(q, ruas, viaKey, viaScore, cepNorm) {
     return { n, id };
   };
   let melhor = null;
-  for (const c of q.literais) {
-    const lista = ruas[c.via];
+  for (const c0 of q.literais) {
+    let c = c0, lista = ruas[c.via];
+    if (!lista) {
+      const h = _viaCanonica(ruas, c.via);
+      if (h) { c = { ...c0, via: h }; lista = ruas[h]; }
+    }
     if (!lista) continue;
     let m = medir(lista, c.tp);
     const confere = c.tp == null ? false : m.n > 0;
@@ -138,6 +191,8 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
   if (!ruas) return falha("vermelho", "Município não indexado");
 
   const q = extrairEntidades(enderecoCru);
+  // Candeia — "S/N" escrito na consulta: o endereço não tem número (não é número omitido).
+  const snExplicito = _RE_SN_FINAL.test(String(enderecoCru || "").trim());
   const cepNorm  = String(cepConsulta || "").replace(/\D/g, "");
 
   // --- Resolução da via: O(1) exato → fuzzy com blocking + cache ---
@@ -501,7 +556,7 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
       metodo = "interpolacao";
       motivo = `Número interpolado entre ${interp.vizinhos[0]} e ${interp.vizinhos[1]}`;
     } else {
-      ({ coord, raio } = geomedoidComRaio(pool, bairroNorm, q.quadra, ehRodovia, q.numero));
+      ({ coord, raio } = geomedoidComRaio(pool, bairroNorm, q.quadra, ehRodovia, q.numero, snExplicito));
     }
     if (!coord) { coord = { lat: m.c.la ?? m.c.lat, lon: m.c.lo ?? m.c.lon }; raio = null; }
     if (status === "amarelo" && raio != null && raio > RAIO_AMARELO_MAX) {
@@ -554,6 +609,12 @@ function _geocodificar(consulta, indiceMunicipios, opts) {
       }
     }
   }
+
+  // Candeia — o raio do ponto da rua (quantil RAIO_QUANTIL das distâncias do trecho) cobria só ~75%
+  // dos erros. Ajustado na amostra do benchmark (alvo: 85% no eixo) e validado numa amostra de
+  // municípios não usados: cobertura da consulta limpa 89,7 → 93,5%. Aplicado depois da cor, que
+  // continua decidida pelo raio do trecho.
+  if ((metodo === "eixo" || metodo === "quadra") && raio != null) raio = Math.round(raio * FATOR_RAIO_EIXO);
 
   return {
     status, motivo, viaScore, viaKey,
