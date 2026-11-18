@@ -91,14 +91,15 @@ cat > "$ENVIO/_headers" <<'EOF'
   Access-Control-Allow-Origin: *
   Cache-Control: public, max-age=31536000, immutable
 /
-  Content-Security-Policy: default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
 EOF
 
 # --- página da raiz (index.html, 404.html, css, fontes) ------------------------------------------
 # Os números da página vêm dos manifestos em $ENVIO/cnefe2022/v*/ (ver montar_pagina.mjs). Ela não
-# tem script nem estilo inline, por isso a CSP acima pode negar tudo que não é do próprio site.
+# tem script nem estilo inline (o tema vem de /tema.js), por isso a CSP acima pode negar tudo que
+# não é do próprio site.
 node "$AQUI/montar_pagina.mjs" "$ENVIO"
 
 N=$(find "$ENVIO" -type f | wc -l)
