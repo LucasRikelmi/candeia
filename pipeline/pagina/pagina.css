@@ -33,8 +33,11 @@
   --gutter: clamp(1rem, 5vw, 4.5rem);
   --radius: 1.125rem;
 }
+/* Escuro: pela preferência do sistema ou pela escolha salva (cookie tema, via tema.js → data-theme). */
+:root[data-theme="light"] { color-scheme: light; }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #0b0e12; --bg-2: #10141a; --card: #141922;
     --line: #232b36; --line-2: #2f3946; --line-ctl: #606b7b;
     --ink: #e7eaef; --muted: #8b96a5;
@@ -44,6 +47,17 @@
     --code-bg: #080a0d; --code-ink: #d6dbe2;
     --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 12px 32px -16px rgb(0 0 0 / .7);
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0e12; --bg-2: #10141a; --card: #141922;
+  --line: #232b36; --line-2: #2f3946; --line-ctl: #606b7b;
+  --ink: #e7eaef; --muted: #8b96a5;
+  --accent: #a99bff; --accent-fill: #a99bff; --accent-fill-2: #c4baff; --accent-ink: #120a33;
+  --marker: color-mix(in srgb, var(--accent) 22%, transparent);
+  --warn: #fbbf24;
+  --code-bg: #080a0d; --code-ink: #d6dbe2;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 12px 32px -16px rgb(0 0 0 / .7);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -69,6 +83,21 @@ code, pre { font-family: var(--mono); }
 .voltar span { color: var(--accent); transition: transform .28s cubic-bezier(.2, .7, .1, 1); }
 .voltar:hover { color: var(--accent); }
 .voltar:hover span { transform: translateX(-3px); }
+.topo .ferramentas { display: flex; align-items: center; gap: 1rem; }
+
+/* Seletor de tema (o mesmo do portfólio e da demo): sistema, claro, escuro. */
+.tema { display: inline-flex; padding: .1875rem; gap: .125rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card); }
+.tema:empty { box-sizing: content-box; width: calc(3 * 2.25rem + 2 * .125rem); height: 2.25rem; }
+html:not(.js) .tema { display: none; }
+.tema button {
+  width: 2.25rem; height: 2.25rem; border-radius: 999px; border: 0; background: transparent;
+  color: var(--muted); cursor: pointer; display: grid; place-items: center;
+  transition: background-color .15s ease, color .15s ease;
+}
+.tema button:hover { color: var(--ink); }
+.tema button[aria-checked="true"] { background: var(--ink); color: var(--bg); }
+.tema svg { width: 1rem; height: 1rem; }
+@media (max-width: 30em) { .topo .ferramentas > .mono { display: none; } }
 header.wrap { padding-top: clamp(1.5rem, 5vw, 3.5rem); padding-bottom: clamp(2.5rem, 6vw, 4rem); }
 h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.75rem, 9vw, 5.5rem); line-height: .95; letter-spacing: -.03em; margin-top: 1rem; }
 h1 em { font-style: italic; color: var(--accent); background: linear-gradient(var(--marker), var(--marker)) no-repeat 0 78% / 100% .14em; padding: 0 .06em; }

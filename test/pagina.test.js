@@ -57,7 +57,7 @@ test("montar escreve a página com os números do manifesto e sem marcador sobra
     assert.doesNotMatch(html, /cnefe2022\/v3\//);
     const pacote = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
     assert.ok(html.includes(`versão ${pacote.version} `));
-    for (const f of ["404.html", "pagina.css", "favicon.svg", "fontes/bricolage-grotesque-normal-latin.woff2"]) {
+    for (const f of ["404.html", "pagina.css", "tema.js", "favicon.svg", "fontes/bricolage-grotesque-normal-latin.woff2"]) {
       assert.ok(existsSync(join(envio, f)), f);
     }
   } finally { rmSync(envio, { recursive: true, force: true }); }
@@ -73,10 +73,12 @@ test("sem manifesto, montar não publica index.html mas mantém o 404.html", () 
   } finally { rmSync(envio, { recursive: true, force: true }); }
 });
 
-test("a página não carrega nada de fora e não tem script", () => {
+test("a página não carrega nada de fora e só tem script do próprio site", () => {
   for (const nome of ["index.html", "404.html"]) {
     const html = readFileSync(new URL(`../pipeline/pagina/${nome}`, import.meta.url), "utf8");
-    assert.doesNotMatch(html, /<script/i, nome);
+    // a CSP da raiz só aceita script do próprio site: nada inline, só /tema.js
+    const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)];
+    assert.deepEqual(scripts.map((m) => [m[1].trim(), m[2].trim()]), [['src="/tema.js"', ""]], nome);
     assert.doesNotMatch(html, /style=/i, nome); // a CSP da raiz não permite estilo inline
     const externos = [...html.matchAll(/<link[^>]+href="(https?:[^"]+)"/g)].map((m) => m[1])
       .filter((u) => u !== "https://dados.lucasrikelmi.dev/");

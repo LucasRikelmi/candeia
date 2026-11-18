@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const ORIGEM = join(AQUI, "pagina");
-const ESTATICOS = ["404.html", "pagina.css", "favicon.svg", "fontes"];
+const ESTATICOS = ["404.html", "pagina.css", "tema.js", "favicon.svg", "fontes"];
 
 const milhar = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 

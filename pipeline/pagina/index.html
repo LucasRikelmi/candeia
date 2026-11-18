@@ -12,19 +12,23 @@
 <meta property="og:url" content="https://dados.lucasrikelmi.dev/">
 <meta property="og:title" content="Índice de dados do Candeia | CNEFE 2022">
 <meta property="og:description" content="Arquivos estáticos por município, derivados do CNEFE do Censo 2022 (IBGE), para o geocodificador Candeia. CC BY 4.0.">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8fa">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0e12">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8fa" data-default="#f7f8fa">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0e12" data-default="#0b0e12">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="/fontes/instrument-serif-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fontes/bricolage-grotesque-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/pagina.css">
+<script src="/tema.js"></script>
 </head>
 <body>
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
 
 <nav class="wrap topo" aria-label="Navegação">
   <a class="voltar" href="https://lucasrikelmi.dev/"><span aria-hidden="true">←</span> Voltar ao portfólio</a>
-  <span class="mono">dados.lucasrikelmi.dev</span>
+  <div class="ferramentas">
+    <span class="mono">dados.lucasrikelmi.dev</span>
+    <div class="tema" role="radiogroup" aria-label="Tema"></div>
+  </div>
 </nav>
 
 <header class="wrap">
