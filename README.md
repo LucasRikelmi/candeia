@@ -2,7 +2,7 @@
 
 Geocodificação de endereços brasileiros que roda no seu próprio código, sem servidor, sem chave de API e sem custo por consulta.
 
-> **Status: v1.1.1.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). Instalação pelo npm (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md), e foram conferidos numa amostra nova de 104 municípios que nunca entraram no ajuste. O [motor híbrido](#motor-híbrido) (busca da via por chave canônica e grafias candidatas, "S/N" escrito e margem do ponto da rua) está na main do repositório e ainda não saiu numa versão do npm. Um benchmark de regressão roda no CI a cada PR.
+> **Status: v1.2.0.** O motor, o índice das 27 UFs e o loader funcionam. O índice está publicado em `https://dados.lucasrikelmi.dev/cnefe2022/v1/` (Cloudflare Pages, CC BY 4.0, ver [DADOS.md](DADOS.md)). Instalação pelo npm (ver [Uso](#uso)). Os números de acurácia vêm de um benchmark sintético sobre o próprio CNEFE (132 municípios, 19.800 endereços), descrito em [docs/ARQUITETURA.md](docs/ARQUITETURA.md), e foram conferidos numa amostra nova de 104 municípios que nunca entraram no ajuste. A v1.2.0 traz o [motor híbrido](#motor-híbrido): busca da via por chave canônica e grafias candidatas, "S/N" escrito e margem do ponto da rua. Um benchmark de regressão roda no CI a cada PR.
 
 ## O problema
 
@@ -33,7 +33,7 @@ npm install candeia
 No navegador, direto de um CDN:
 
 ```js
-import { criarGeocodificador } from "https://cdn.jsdelivr.net/npm/candeia@1.1.1/src/index.js";
+import { criarGeocodificador } from "https://cdn.jsdelivr.net/npm/candeia@1.2.0/src/index.js";
 ```
 
 ```js
@@ -106,7 +106,7 @@ O [geocodebr](https://ipeagit.github.io/geocodebr), do IPEA, também usa o CNEFE
 
 ### Comparação numa amostra nova
 
-Três motores nos mesmos endereços: o geocodebr 0.7.0 (entrada em campos separados, `resolver_empates = TRUE`; scripts em `bench/geocodebr/`), o Candeia normal (v1.1.1, a versão publicada) e o Candeia com o [motor híbrido](#motor-híbrido). A amostra tem 14.314 endereços de 104 municípios que nunca foram usados para ajustar o Candeia, 4 por UF sorteados por hash com semente fixa (o DF fica de fora: só tem Brasília, que já estava na amostra de ajuste). O critério foi registrado antes de rodar qualquer motor. ≤100 m é a fração de respostas a até 100 m do ponto certo (maior é melhor); >1 km é a fração que errou por mais de 1 km, incluindo as sem resposta (menor é melhor). O intervalo de 95% da diferença vem de reamostrar municípios (1.000 vezes).
+Três motores nos mesmos endereços: o geocodebr 0.7.0 (entrada em campos separados, `resolver_empates = TRUE`; scripts em `bench/geocodebr/`), o Candeia normal (v1.1.1, sem o motor híbrido) e o Candeia com o [motor híbrido](#motor-híbrido) (v1.2.0). A amostra tem 14.314 endereços de 104 municípios que nunca foram usados para ajustar o Candeia, 4 por UF sorteados por hash com semente fixa (o DF fica de fora: só tem Brasília, que já estava na amostra de ajuste). O critério foi registrado antes de rodar qualquer motor. ≤100 m é a fração de respostas a até 100 m do ponto certo (maior é melhor); >1 km é a fração que errou por mais de 1 km, incluindo as sem resposta (menor é melhor). O intervalo de 95% da diferença vem de reamostrar municípios (1.000 vezes).
 
 | grupo | n | ≤100 m geocodebr | ≤100 m Candeia normal | ≤100 m Candeia híbrido | diferença híbrido − geocodebr (IC 95%) | >1 km geocodebr | >1 km Candeia (normal e híbrido) |
 |---|---|---|---|---|---|---|---|
